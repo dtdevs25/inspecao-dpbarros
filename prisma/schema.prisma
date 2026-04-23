@@ -219,3 +219,18 @@ model SystemLog {
   details   String?
   createdAt DateTime @default(now())
 }
+
+model DailyChecklist {
+  id               String   @id @default(uuid())
+  companyId        String?
+  unitId           String?
+  date             String?  // Format: YYYY-MM-DD
+  inspectorName    String?
+  responsibleName  String?
+  photoUrl         String?  // Photo of the front of the construction site
+  answers          Json?    // Stores the C, NC, NA answers
+  observations     String?
+  pdfUrl           String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

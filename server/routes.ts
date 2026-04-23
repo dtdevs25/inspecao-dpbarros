@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { sendEmail } from './email';
 import { LegacyReportService } from './reports/LegacyReportService';
+import { DailyChecklistService } from './reports/DailyChecklistService';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -541,6 +542,18 @@ router.get('/auth/verify-token', async (req: any, res: any) => {
     }
 });
 
+// --- TEST ROUTE FOR DAILY CHECKLIST COVER ---
+router.get('/api/test-cover-pdf', async (req: any, res: any) => {
+    try {
+        const pdfBuffer = await DailyChecklistService.generateTestCover();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="teste_capa_601.pdf"');
+        res.send(pdfBuffer);
+    } catch (e: any) {
+        console.error("Erro ao gerar PDF da capa:", e);
+        res.status(500).json({ error: "Erro ao gerar PDF da capa", details: e.message });
+    }
+});
 
 router.get('/auth/me', authenticate, async (req: any, res: any) => {
     try {
