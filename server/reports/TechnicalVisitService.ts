@@ -387,47 +387,53 @@ export class TechnicalVisitService {
 
         // TABLE: CONFORMIDADE / AÇÃO CORRETIVA
         const tableW = mmToPt(180);
-        const col1W = mmToPt(45); // Made slightly wider based on image proportions
         const marginX = mmToPt(15);
         
         const drawCentered = (txt: string, x: number, w: number, y: number, f: PDFFont, s: number, color?: any) => {
             page.drawText(txt, { x: x + (w - f.widthOfTextAtSize(txt, s))/2, y, font: f, size: s, color: color || rgb(0,0,0) });
         };
 
+        const startY = currentY;
+
         // Header
         const headerH = mmToPt(8);
-        page.drawRectangle({ x: marginX, y: currentY - headerH, width: tableW, height: headerH, color: rgb(0.1, 0.1, 0.1), borderColor: rgb(0,0,0), borderWidth: 0.5 });
-        drawCentered('CONFORMIDADE / AÇÃO CORRETIVA', marginX, tableW, currentY - mmToPt(5.5), fontBold, 10, rgb(1,1,1));
+        drawCentered('CONFORMIDADE/AÇÃO CORRETIVA', marginX, tableW, currentY - mmToPt(5.5), fontBold, 10);
         currentY -= headerH;
+        this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
 
-        const drawRow = (label: string, value: string, height = 15) => {
-            const h = mmToPt(height);
-            page.drawRectangle({ x: marginX, y: currentY - h, width: tableW, height: h, borderColor: rgb(0,0,0), borderWidth: 0.5 });
-            this.drawLine(page, marginX + col1W, currentY, marginX + col1W, currentY - h);
-            page.drawText(label, { x: marginX + mmToPt(2), y: currentY - mmToPt(5), size: 10, font: fontBold });
+        const drawRowCompact = (label: string, value: string) => {
+            currentY -= mmToPt(2); // Top padding
+            page.drawText(`${label}:`, { x: marginX + mmToPt(2), y: currentY - mmToPt(4), size: 10, font: fontBold });
             
-            // Wrap text for value
-            this.drawTextWrapped(page, value || 'Nada Consta', marginX + col1W + mmToPt(2), currentY - mmToPt(5), { font: fontRegular, size: 10, maxWidth: tableW - col1W - mmToPt(4) });
-            currentY -= h;
+            const labelWidth = fontBold.widthOfTextAtSize(`${label}: `, 10);
+            const textY = currentY - mmToPt(4);
+            const wrappedY = this.drawTextWrapped(page, value || 'Nada Consta', marginX + mmToPt(2) + labelWidth, textY, { font: fontRegular, size: 10, maxWidth: tableW - labelWidth - mmToPt(4) });
+            
+            const linesHeight = textY - wrappedY;
+            currentY -= (mmToPt(6) + linesHeight); // base height + wrapped lines
         };
 
-        drawRow('Conformidade', inspection.description || '', 20);
-        drawRow('Risco/Perigo', inspection.risk || 'Nada Consta', 15);
-        drawRow('Ação Imediata', inspection.resolution || 'Nada Consta', 15);
-        drawRow('Ação Corretiva', inspection.correctiveAction || 'Nada Consta', 15);
+        drawRowCompact('Conformidade', inspection.description || '');
+        drawRowCompact('Risco/Perigo', inspection.risk || 'Nada Consta');
+        drawRowCompact('Ação Imediata', inspection.resolution || 'Nada Consta');
+        drawRowCompact('Ação Corretiva', inspection.correctiveAction || 'Nada Consta');
 
         // Deadlines Row
-        page.drawRectangle({ x: marginX, y: currentY - mmToPt(10), width: tableW, height: mmToPt(10), borderColor: rgb(0,0,0), borderWidth: 0.5 });
-        const deadlineStr = inspection.deadline ? new Date(inspection.deadline).toLocaleDateString('pt-BR') : 'N/A';
-        const finalDeadlineStr = inspection.finalDeadline ? new Date(inspection.finalDeadline).toLocaleDateString('pt-BR') : 'N/A';
+        currentY -= mmToPt(2);
+        const deadlineStr = inspection.deadline ? new Date(inspection.deadline).toLocaleDateString('pt-BR') : '';
+        const finalDeadlineStr = inspection.finalDeadline ? new Date(inspection.finalDeadline).toLocaleDateString('pt-BR') : '';
         
-        page.drawText(`Prazo Inicial: `, { x: marginX + mmToPt(2), y: currentY - mmToPt(6.5), size: 10, font: fontBold });
-        page.drawText(deadlineStr, { x: marginX + mmToPt(2) + fontBold.widthOfTextAtSize('Prazo Inicial: ', 10), y: currentY - mmToPt(6.5), size: 10, font: fontRegular });
+        page.drawText(`Prazo Inicial: `, { x: marginX + mmToPt(2), y: currentY - mmToPt(4), size: 10, font: fontBold });
+        page.drawText(deadlineStr, { x: marginX + mmToPt(2) + fontBold.widthOfTextAtSize('Prazo Inicial: ', 10), y: currentY - mmToPt(4), size: 10, font: fontRegular });
         
-        this.drawLine(page, marginX + tableW / 2, currentY, marginX + tableW / 2, currentY - mmToPt(10));
+        page.drawText(`Prazo Final: `, { x: marginX + tableW / 2 + mmToPt(20), y: currentY - mmToPt(4), size: 10, font: fontBold });
+        page.drawText(finalDeadlineStr, { x: marginX + tableW / 2 + mmToPt(20) + fontBold.widthOfTextAtSize('Prazo Final: ', 10), y: currentY - mmToPt(4), size: 10, font: fontRegular });
         
-        page.drawText(`Prazo Final: `, { x: marginX + tableW / 2 + mmToPt(2), y: currentY - mmToPt(6.5), size: 10, font: fontBold });
-        page.drawText(finalDeadlineStr, { x: marginX + tableW / 2 + mmToPt(2) + fontBold.widthOfTextAtSize('Prazo Final: ', 10), y: currentY - mmToPt(6.5), size: 10, font: fontRegular });
+        currentY -= mmToPt(6); // Bottom padding
+
+        // Draw outer border
+        const tableHeight = startY - currentY;
+        page.drawRectangle({ x: marginX, y: currentY, width: tableW, height: tableHeight, borderColor: rgb(0,0,0), borderWidth: 0.5 });
     }
 
 
