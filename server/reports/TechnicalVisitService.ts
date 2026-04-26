@@ -107,7 +107,7 @@ export class TechnicalVisitService {
         // Row 4: Values
         // Row 5+: Custom Responsibles
 
-        const headerH = mmToPt(55);
+        const headerH = mmToPt(48.5);
         page.drawRectangle({ x: marginX, y: currentY - headerH, width: tableW, height: headerH, borderColor: black, borderWidth: 1 });
 
         // Left Column (Logo) - Spans 2 rows
@@ -190,7 +190,6 @@ export class TechnicalVisitService {
 
         const unitDisplay = visit.unitName || '';
         drawRespRow(`Responsável da Obra ${unitDisplay}`, visit.engineerResponsible || '');
-        drawRespRow(`Responsável da Obra ${unitDisplay}`, visit.engineerResponsible || ''); 
         drawRespRow(`Técnico em Seg. do Trabalho da Obra ${unitDisplay}`, visit.technicianResponsible || '');
 
         return mmToPt(297) - mmToPt(15) - headerH;
@@ -201,6 +200,13 @@ export class TechnicalVisitService {
         const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
         
+        let unitAddress = '';
+        if (visit.unitId) {
+            const unit = await prisma.unit.findUnique({ where: { id: visit.unitId } });
+            if (unit && unit.address) unitAddress = unit.address;
+        }
+        visit.unitAddress = unitAddress;
+
         let inspections = [];
         if (visit.inspectionIds && visit.inspectionIds.length > 0) {
             inspections = await prisma.inspection.findMany({
@@ -219,6 +225,32 @@ export class TechnicalVisitService {
         }
 
         await this.createChecklistPages(pdfDoc, visit, fontBold, fontRegular, pageNum++, totalPages);
+
+        const pages = pdfDoc.getPages();
+        for (let i = 0; i < pages.length; i++) {
+            const p = pages[i];
+            const footerY = mmToPt(10);
+            p.drawLine({
+                start: { x: mmToPt(15), y: footerY + mmToPt(10) },
+                end: { x: mmToPt(210) - mmToPt(15), y: footerY + mmToPt(10) },
+                thickness: 0.5,
+                color: rgb(0.5, 0.5, 0.5)
+            });
+            p.drawRectangle({
+                x: mmToPt(210) - mmToPt(25),
+                y: footerY,
+                width: mmToPt(10),
+                height: mmToPt(10),
+                color: rgb(0.5, 0.5, 0.5)
+            });
+            p.drawText(`${i + 1}`, {
+                x: mmToPt(210) - mmToPt(20) - fontBold.widthOfTextAtSize(`${i + 1}`, 10) / 2,
+                y: footerY + mmToPt(3),
+                size: 10,
+                font: fontBold,
+                color: rgb(1, 1, 1)
+            });
+        }
 
         return Buffer.from(await pdfDoc.save());
     }
@@ -244,7 +276,7 @@ export class TechnicalVisitService {
         
         // Address/Company Table
         page.drawRectangle({ x: marginX, y: currentY - rowH, width: tableW, height: rowH, borderColor: rgb(0,0,0), borderWidth: 0.5 });
-        page.drawText(`Endereço: ${visit.companyName || ''}`, { x: marginX + mmToPt(2), y: currentY - mmToPt(6), size: 10, font: fontRegular });
+        page.drawText(`Endereço: ${visit.unitAddress || visit.companyName || ''}`, { x: marginX + mmToPt(2), y: currentY - mmToPt(6), size: 10, font: fontRegular });
         currentY -= rowH;
         
         currentY -= mmToPt(15);
@@ -277,7 +309,7 @@ export class TechnicalVisitService {
              currentY -= mmToPt(50);
         }
 
-        drawCentered(`Foto de Entrada da obra ${obraName}`, marginX, tableW, currentY, fontRegular, 10);
+        drawCentered(`FOTO DE ENTRADA OBRA - ${obraName.toUpperCase()}`, marginX, tableW, currentY, fontBold, 12);
     }
 
     private static async createDocumentationPage(pdfDoc: PDFDocument, visit: any, fontBold: PDFFont, fontRegular: PDFFont, pageNumber: number, totalPages: number) {
