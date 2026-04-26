@@ -201,15 +201,15 @@ export default function TechnicalVisits() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Engenheiro Responsável</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Engenheiro(s) Responsável(eis)</label>
                   <input type="text" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl"
-                    placeholder="Nome do Engenheiro"
+                    placeholder="Nome(s) do(s) Engenheiro(s)"
                     value={form.engineerResponsible} onChange={e => setForm({ ...form, engineerResponsible: e.target.value })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Técnico de Segurança Responsável</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Técnico(s) de Segurança Responsável(eis)</label>
                   <input type="text" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl"
-                    placeholder="Nome do Técnico"
+                    placeholder="Nome(s) do(s) Técnico(s)"
                     value={form.technicianResponsible} onChange={e => setForm({ ...form, technicianResponsible: e.target.value })} />
                 </div>
               </div>

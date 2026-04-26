@@ -1,3 +1,4 @@
+import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
 import { s3 } from '../s3';
@@ -27,7 +28,7 @@ export class TechnicalVisitService {
                     if (!s3Response || !s3Response.Body) return null;
                     const chunks = [];
                     for await (const chunk of s3Response.Body as any) chunks.push(chunk);
-                    return Buffer.from(Uint8Array.from([].concat(...chunks.map(c => Array.from(c)))));
+                    return Buffer.concat(chunks);
                 }
             }
 
@@ -145,11 +146,11 @@ export class TechnicalVisitService {
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
 
         // Third Row: Responsible Persons
-        page.drawText('Engenheiro Responsável', { x: col1X, y: currentY - mmToPt(4), size: 8, font: fontBold });
+        page.drawText('Engenheiro(s) Responsável(eis)', { x: col1X, y: currentY - mmToPt(4), size: 8, font: fontBold });
         page.drawText(visit.engineerResponsible || 'Não informado', { x: col1X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
 
         this.drawLine(page, col2X - mmToPt(2), currentY, col2X - mmToPt(2), currentY - mmToPt(12));
-        page.drawText('Técnico de Segurança Responsável', { x: col2X, y: currentY - mmToPt(4), size: 8, font: fontBold });
+        page.drawText('Técnico(s) de Seg. Responsável(eis)', { x: col2X, y: currentY - mmToPt(4), size: 8, font: fontBold });
         page.drawText(visit.technicianResponsible || 'Não informado', { x: col2X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
 
         // Horizontal Line below third row
