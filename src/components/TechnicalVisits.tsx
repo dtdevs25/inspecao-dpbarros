@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Download, Sparkles, Loader2, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { Plus, Edit2, Download, Sparkles, Loader2, ChevronDown, ChevronUp, Users, Calendar, ClipboardList } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from '../lib/dbBridge';
 const db = {} as any;
 import { useUser } from '../contexts/UserContext';
@@ -154,8 +154,8 @@ export default function TechnicalVisits() {
     return (
       <div className="max-w-5xl mx-auto space-y-6 pb-16">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">{viewMode === 'create' ? 'Nova Visita Tecnica' : 'Editar Visita'}</h1>
-          <button onClick={() => setViewMode('list')} className="px-4 py-2 bg-gray-200 rounded-xl text-sm font-bold">Cancelar</button>
+          <h1 className="text-2xl font-bold text-gray-800">{viewMode === 'create' ? 'Nova Visita Técnica' : 'Editar Visita'}</h1>
+          <button onClick={() => setViewMode('list')} className="px-4 py-2 bg-gray-200 rounded-xl text-sm font-bold hover:bg-gray-300 transition-colors">Voltar</button>
         </div>
 
         {/* Section tabs */}
@@ -225,13 +225,20 @@ export default function TechnicalVisits() {
               <h3 className="text-[#27AE60] font-bold text-lg">Inspecoes Vinculadas ({form.inspectionIds.length} selecionadas)</h3>
               <p className="text-sm text-gray-500">Selecione os apontamentos desta obra para incluir no relatorio fotografico.</p>
               {filteredInspections.length === 0 && <p className="text-gray-400 text-sm italic">Nenhuma inspecao encontrada para esta unidade.</p>}
-              <div className="space-y-2 max-h-80 overflow-y-auto border rounded-xl p-3 bg-gray-50">
+              <div className="space-y-2 max-h-96 overflow-y-auto border rounded-xl p-3 bg-gray-50/50">
                 {filteredInspections.map(insp => (
-                  <label key={insp.id} className="flex items-start gap-3 p-3 bg-white border rounded-xl cursor-pointer hover:bg-green-50 transition-colors">
-                    <input type="checkbox" checked={form.inspectionIds.includes(insp.id)} onChange={() => toggleInspection(insp.id)} className="mt-1" />
-                    <div>
-                      <p className="text-sm font-bold text-gray-700">{insp.date} – {insp.sectorName || ''}</p>
-                      <p className="text-xs text-gray-500 line-clamp-2">{insp.description}</p>
+                  <label key={insp.id} className="flex items-start gap-3 p-4 bg-white border border-gray-100 rounded-xl cursor-pointer hover:border-[#27AE60] hover:bg-green-50/30 transition-all shadow-sm">
+                    <input type="checkbox" checked={form.inspectionIds.includes(insp.id)} onChange={() => toggleInspection(insp.id)} className="mt-1 h-4 w-4 rounded border-gray-300 text-[#27AE60] focus:ring-[#27AE60]" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-black text-[#27AE60]">#{insp.id.substring(0,6).toUpperCase()}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{new Date(insp.date).toLocaleDateString('pt-BR')}</p>
+                      </div>
+                      <p className="text-sm font-bold text-gray-700 truncate">{insp.type || 'Apontamento'}</p>
+                      <p className="text-xs text-gray-500 line-clamp-1">{insp.sectorName || 'Setor não informado'} {insp.locationName ? `— ${insp.locationName}` : ''}</p>
+                      {insp.description && (
+                        <p className="text-[11px] text-gray-400 mt-1 italic line-clamp-2 bg-gray-50 p-2 rounded-lg border border-gray-100">{insp.description}</p>
+                      )}
                     </div>
                   </label>
                 ))}
@@ -315,9 +322,9 @@ export default function TechnicalVisits() {
               )}
             </div>
             <button type="submit" disabled={saving}
-              className="bg-[#27AE60] hover:bg-[#219150] text-white px-8 py-3 rounded-xl font-bold disabled:opacity-60 flex items-center gap-2">
+              className="bg-[#27AE60] hover:bg-[#219150] text-white px-8 py-3 rounded-xl font-bold disabled:opacity-60 flex items-center gap-2 shadow-lg shadow-green-100 transition-all active:scale-95">
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {saving ? 'Salvando...' : 'Salvar Visita Tecnica'}
+              {saving ? 'Salvando...' : 'Salvar Visita Técnica'}
             </button>
           </div>
         </form>
@@ -328,8 +335,8 @@ export default function TechnicalVisits() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Relatorio Fotografico (Visitas Tecnicas)</h1>
-        <button onClick={openCreate} className="bg-[#27AE60] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-gray-800">Visitas Técnicas (Relatório Fotográfico)</h1>
+        <button onClick={openCreate} className="bg-[#27AE60] hover:bg-[#219150] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-green-100 transition-all active:scale-95">
           <Plus className="w-5 h-5" /> Nova Visita
         </button>
       </div>
@@ -339,16 +346,25 @@ export default function TechnicalVisits() {
           <p className="text-sm">Clique em "Nova Visita" para comecar.</p>
         </div>
       )}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {visits.map(v => (
-          <div key={v.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow">
-            <div>
-              <p className="font-bold text-gray-800 text-lg">{v.companyName} — {v.unitName}</p>
-              <p className="text-sm text-gray-500">Data: {v.date} &nbsp;|&nbsp; {v.inspectionIds?.length || 0} inspecao(oes) vinculada(s)</p>
+          <div key={v.id} className="group bg-white rounded-2xl border border-gray-100 p-6 flex items-center justify-between shadow-sm hover:shadow-xl hover:border-[#27AE60]/20 transition-all duration-300">
+            <div className="flex items-center gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-green-50 flex flex-col items-center justify-center text-[#27AE60] border border-green-100 group-hover:scale-110 transition-transform">
+                <Calendar className="w-6 h-6 mb-0.5" />
+                <span className="text-[10px] font-black uppercase">{new Date(v.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')}</span>
+              </div>
+              <div className="space-y-1">
+                <p className="font-black text-gray-800 text-lg group-hover:text-[#27AE60] transition-colors">{v.unitName}</p>
+                <div className="flex items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  <span className="bg-gray-100 px-2 py-0.5 rounded-lg">{v.companyName}</span>
+                  <span className="flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5" /> {v.inspectionIds?.length || 0} Apontamentos</span>
+                </div>
+              </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => openEdit(v)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-xl" title="Editar"><Edit2 className="w-5 h-5" /></button>
-              <button onClick={() => downloadPDF(v.id)} className="p-2 text-[#27AE60] hover:bg-green-50 rounded-xl" title="Baixar PDF"><Download className="w-5 h-5" /></button>
+              <button onClick={() => openEdit(v)} className="p-3 text-gray-400 hover:text-[#27AE60] hover:bg-green-50 rounded-2xl transition-all" title="Editar"><Edit2 className="w-6 h-6" /></button>
+              <button onClick={() => downloadPDF(v.id)} className="p-3 text-white bg-[#27AE60] hover:bg-[#219150] rounded-2xl shadow-lg shadow-green-100 transition-all active:scale-95" title="Baixar PDF"><Download className="w-6 h-6" /></button>
             </div>
           </div>
         ))}

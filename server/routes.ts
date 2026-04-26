@@ -670,7 +670,7 @@ REGRAS:
 });
 
 // --- TECHNICAL VISIT REPORT ROUTE ---
-router.get('/api/reports/technical-visit/:id/pdf', authenticate, async (req: any, res: any) => {
+router.get('/reports/technical-visit/:id/pdf', authenticate, async (req: any, res: any) => {
     try {
         const { id } = req.params;
         const visit = await prisma.technicalVisit.findUnique({ where: { id } });

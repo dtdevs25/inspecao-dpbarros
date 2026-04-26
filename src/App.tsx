@@ -109,7 +109,7 @@ function AppContent() {
     switch (activeTab) {
       case 'Dashboard':
         return <Dashboard setActiveTab={setActiveTab} setPrefilledData={setPrefilledData} />;
-      case 'Relatório Fotográfico':
+      case 'Visita Técnica':
         return <TechnicalVisits />;
       case 'Inspeções':
         return <Inspections setActiveTab={setActiveTab} setPrefilledData={setPrefilledData} prefilledData={prefilledData} onClearPrefilledData={() => setPrefilledData(null)} />;

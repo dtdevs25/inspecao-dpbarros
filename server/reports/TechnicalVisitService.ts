@@ -1,4 +1,4 @@
-﻿import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -6,6 +6,17 @@ const mmToPt = (mm: number) => mm * 2.83465;
 
 export class TechnicalVisitService {
     private static ASSETS_PATH = path.join(process.cwd(), 'server', 'assets', 'reports');
+
+    private static async getRemoteImageBuffer(url: string): Promise<Buffer | null> {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return null;
+            const arrayBuffer = await response.arrayBuffer();
+            return Buffer.from(arrayBuffer);
+        } catch (e) {
+            return null;
+        }
+    }
 
     private static async getLocalImageBuffer(filename: string): Promise<Buffer | null> {
         try {
@@ -96,16 +107,16 @@ export class TechnicalVisitService {
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
 
         currentY -= mmToPt(6);
-        page.drawText('Responsável da obra 601 DCDC', { x: col1X, y: currentY, size: 10, font: fontBold });
-        page.drawText('Geraldo Donizete Vieira Siqueira', { x: col2X, y: currentY, size: 10, font: fontRegular });
+        page.drawText('Empresa', { x: col1X, y: currentY, size: 10, font: fontBold });
+        page.drawText(visit.companyName || '', { x: col2X, y: currentY, size: 10, font: fontRegular });
 
         currentY -= mmToPt(6);
-        page.drawText('Responsável da obra 601 DCDC', { x: col1X, y: currentY, size: 10, font: fontBold });
-        page.drawText('Anderson Ap. Pim Marques', { x: col2X, y: currentY, size: 10, font: fontRegular });
+        page.drawText('Obra', { x: col1X, y: currentY, size: 10, font: fontBold });
+        page.drawText(visit.unitName || '', { x: col2X, y: currentY, size: 10, font: fontRegular });
 
         currentY -= mmToPt(6);
         page.drawText('Técnico em Seg. do Trabalho', { x: col1X, y: currentY, size: 10, font: fontBold });
-        page.drawText('José Bispo Dantas', { x: col2X, y: currentY, size: 10, font: fontRegular });
+        page.drawText(visit.registeredBy || '', { x: col2X, y: currentY, size: 10, font: fontRegular });
 
         currentY -= mmToPt(6);
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
@@ -145,16 +156,31 @@ export class TechnicalVisitService {
         let currentY = await this.drawHeader(page, visit, pdfDoc, fontBold, fontRegular, pageNumber, totalPages, 'Relatório Fotográfico');
         
         currentY -= mmToPt(15);
-        page.drawText(`Obra ${visit.unitName || 'Não Informada'}`, { x: mmToPt(15), y: currentY, size: 12, font: fontBold });
+        page.drawText(`Obra: ${visit.unitName || 'Não Informada'}`, { x: mmToPt(15), y: currentY, size: 12, font: fontBold });
         currentY -= mmToPt(8);
-        page.drawText(`Endereço: Cidade: `, { x: mmToPt(15), y: currentY, size: 11, font: fontRegular });
+        page.drawText(`Empresa: ${visit.companyName || ''}`, { x: mmToPt(15), y: currentY, size: 11, font: fontRegular });
         
         currentY -= mmToPt(15);
         page.drawText('Registro Fotográfico', { x: mmToPt(85), y: currentY, size: 16, font: fontBold });
 
         if (visit.photoUrl) {
-            // Just write URL for now, integrating image fetching would use getLocalImageBuffer or S3
-            page.drawText('(Foto da fachada)', { x: mmToPt(15), y: currentY - mmToPt(100), size: 12, font: fontRegular });
+            try {
+                const imgBuf = await this.getRemoteImageBuffer(visit.photoUrl);
+                if (imgBuf) {
+                    const img = await pdfDoc.embedJpg(imgBuf).catch(() => pdfDoc.embedPng(imgBuf));
+                    const maxWidth = mmToPt(140);
+                    const maxHeight = mmToPt(100);
+                    const dims = img.scaleToFit(maxWidth, maxHeight);
+                    page.drawImage(img, {
+                        x: mmToPt(105) - dims.width / 2,
+                        y: currentY - mmToPt(120),
+                        width: dims.width,
+                        height: dims.height
+                    });
+                }
+            } catch (e) {
+                page.drawText('(Falha ao carregar foto da fachada)', { x: mmToPt(15), y: currentY - mmToPt(100), size: 12, font: fontRegular });
+            }
         }
     }
 
@@ -197,11 +223,30 @@ export class TechnicalVisitService {
         const page = pdfDoc.addPage([mmToPt(210), mmToPt(297)]);
         let currentY = await this.drawHeader(page, visit, pdfDoc, fontBold, fontRegular, pageNumber, totalPages, 'Relatório Fotográfico');
         
-        // Image placeholder
-        currentY -= mmToPt(100);
-        page.drawText('(Foto da Inspeção)', { x: mmToPt(90), y: currentY + mmToPt(50), size: 12, font: fontRegular });
+        // Image
+        if (inspection.image) {
+            try {
+                const imgBuf = await this.getRemoteImageBuffer(inspection.image);
+                if (imgBuf) {
+                    const img = await pdfDoc.embedJpg(imgBuf).catch(() => pdfDoc.embedPng(imgBuf));
+                    const maxWidth = mmToPt(140);
+                    const maxHeight = mmToPt(100);
+                    const dims = img.scaleToFit(maxWidth, maxHeight);
+                    page.drawImage(img, {
+                        x: mmToPt(105) - dims.width / 2,
+                        y: currentY - mmToPt(110),
+                        width: dims.width,
+                        height: dims.height
+                    });
+                }
+            } catch (e) {
+                page.drawText('(Falha ao carregar foto da inspeção)', { x: mmToPt(80), y: currentY - mmToPt(50), size: 10, font: fontRegular });
+            }
+        } else {
+            page.drawText('(Sem foto de evidência)', { x: mmToPt(90), y: currentY - mmToPt(50), size: 12, font: fontRegular });
+        }
 
-        currentY -= mmToPt(10);
+        currentY -= mmToPt(120);
         page.drawText('CONFORMIDADE/AÇÃO CORRETIVA', { x: mmToPt(75), y: currentY, size: 11, font: fontBold });
         
         currentY -= mmToPt(10);
