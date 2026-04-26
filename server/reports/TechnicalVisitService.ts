@@ -576,29 +576,56 @@ export class TechnicalVisitService {
 
         // Final page - notes + signatures
         pg = pdfDoc.addPage([mmToPt(210), mmToPt(297)]);
-        cy = await this.drawHeader(pg, visit, pdfDoc, fontBold, fontRegular, pn, totalPages, 'Anotacoes e Assinaturas');
+        cy = await this.drawHeader(pg, visit, pdfDoc, fontBold, fontRegular, pn, totalPages, 'Anotações e Assinaturas');
         cy -= mmToPt(10);
-        pg.drawText('Anotacoes de Nao Conformidade e/ou Recomendacoes:', { x: mx, y: cy, size: 11, font: fontBold, color: blk });
+        pg.drawText('Anotações de Não Conformidade e/ou Recomendações:', { x: mx, y: cy, size: 11, font: fontBold, color: blk });
         cy -= mmToPt(5);
-        pg.drawRectangle({ x: mx, y: cy-mmToPt(55), width: tw, height: mmToPt(55), borderColor: blk, borderWidth: 0.5, color: rgb(0.98,0.98,0.98) });
+        
+        // Notes Box
+        const boxHeight = mmToPt(70);
+        pg.drawRectangle({ x: mx, y: cy-boxHeight, width: tw, height: boxHeight, borderColor: blk, borderWidth: 0.5 });
         if (visit.finalNotes) {
             let ny = cy - mmToPt(6);
             for (const line of String(visit.finalNotes).split('\n')) {
-                ny = this.drawTextWrapped(pg, line, mx+mmToPt(2), ny, { font: fontRegular, size: 9, maxWidth: tw-mmToPt(4) });
-                if (ny < cy-mmToPt(52)) break;
+                ny = this.drawTextWrapped(pg, line, mx+mmToPt(2), ny, { font: fontRegular, size: 10, maxWidth: tw-mmToPt(4) });
+                if (ny < cy - boxHeight + mmToPt(4)) break;
+            }
+        } else {
+            // Draw lines inside the box if empty to match model
+            let lineY = cy - mmToPt(10);
+            while (lineY > cy - boxHeight + mmToPt(5)) {
+                this.drawLine(pg, mx, lineY, mx+tw, lineY, rgb(0.8,0.8,0.8), 0.5);
+                lineY -= mmToPt(8);
             }
         }
-        cy -= mmToPt(60);
-        cy -= mmToPt(8);
-        pg.drawText('Prazo para Regularizacao:', { x: mx, y: cy, size: 11, font: fontBold, color: blk });
-        cy -= mmToPt(4);
-        this.drawLine(pg, mx, cy, mx+tw, cy, blk, 0.5);
-        cy -= mmToPt(35);
-        const sw = mmToPt(75);
-        this.drawLine(pg, mx, cy, mx+sw, cy, blk, 0.5);
-        this.drawLine(pg, mx+tw-sw, cy, mx+tw, cy, blk, 0.5);
+        cy -= boxHeight;
+        
+        cy -= mmToPt(10);
+        pg.drawText('Prazo para Regularização: _____/_____/_____', { x: mx, y: cy, size: 11, font: fontBold, color: blk });
         cy -= mmToPt(5);
-        pg.drawText('Tecnico em Seguranca do Trabalho - SESMT Central', { x: mx, y: cy, size: 8, font: fontRegular, color: blk });
-        pg.drawText('Responsavel da Obra', { x: mx+tw-sw, y: cy, size: 8, font: fontRegular, color: blk });
+        this.drawLine(pg, mx, cy, mx+tw, cy, blk, 0.5);
+        
+        cy -= mmToPt(35);
+        const sw = mmToPt(80);
+        
+        // Technician Signature
+        this.drawLine(pg, mx, cy, mx+sw, cy, blk, 0.5);
+        const techName = visit.technicianResponsible || '';
+        if (techName) {
+            drawCentered(pg, techName, mx, sw, cy-mmToPt(5), fontBold, 9);
+            drawCentered(pg, 'Técnico de Segurança do Trabalho', mx, sw, cy-mmToPt(9), fontRegular, 8);
+        } else {
+            drawCentered(pg, 'Técnico de Segurança do Trabalho', mx, sw, cy-mmToPt(5), fontRegular, 8);
+        }
+        
+        // Engineer Signature
+        this.drawLine(pg, mx+tw-sw, cy, mx+tw, cy, blk, 0.5);
+        const engName = visit.engineerResponsible || '';
+        if (engName) {
+            drawCentered(pg, engName, mx+tw-sw, sw, cy-mmToPt(5), fontBold, 9);
+            drawCentered(pg, 'Engenheiro / Encarregado Responsável', mx+tw-sw, sw, cy-mmToPt(9), fontRegular, 8);
+        } else {
+            drawCentered(pg, 'Engenheiro / Encarregado Responsável', mx+tw-sw, sw, cy-mmToPt(5), fontRegular, 8);
+        }
     }
 }
