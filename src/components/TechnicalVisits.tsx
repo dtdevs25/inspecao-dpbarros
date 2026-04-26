@@ -49,6 +49,8 @@ export default function TechnicalVisits() {
     finalNotes: '',
     inspectionIds: [] as string[],
     checklistAnswers: { ...DEFAULT_CHECKLIST_ANSWERS } as ChecklistAnswers,
+    engineerResponsible: '',
+    technicianResponsible: '',
   });
   const [form, setForm] = useState(emptyForm());
 
@@ -195,6 +197,21 @@ export default function TechnicalVisits() {
                   <label className="block text-sm font-bold text-gray-700 mb-1">Data da Visita *</label>
                   <input type="date" required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl"
                     value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+                </div>
+              </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Engenheiro Responsável</label>
+                  <input type="text" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl"
+                    placeholder="Nome do Engenheiro"
+                    value={form.engineerResponsible} onChange={e => setForm({ ...form, engineerResponsible: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Técnico de Segurança Responsável</label>
+                  <input type="text" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl"
+                    placeholder="Nome do Técnico"
+                    value={form.technicianResponsible} onChange={e => setForm({ ...form, technicianResponsible: e.target.value })} />
                 </div>
               </div>
               <div>

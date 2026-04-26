@@ -1,6 +1,7 @@
-import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
+import { s3 } from '../s3';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
 
 const mmToPt = (mm: number) => mm * 2.83465;
 
@@ -9,11 +10,34 @@ export class TechnicalVisitService {
 
     private static async getRemoteImageBuffer(url: string): Promise<Buffer | null> {
         try {
+            console.log('Fetching buffer for Technical Visit PDF:', url);
+            // Handle internal S3 proxy URLs
+            if (url.includes('/api/files/')) {
+                const parts = url.split('/');
+                const filesIndex = parts.indexOf('files');
+                if (filesIndex > -1 && filesIndex + 2 < parts.length) {
+                    const bucket = parts[filesIndex + 1];
+                    const key = parts.slice(filesIndex + 2).join('/');
+                    console.log('S3 Direct Fetch for PDF:', bucket, key);
+                    const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+                    const s3Response = await s3.send(command).catch(err => {
+                        console.warn(`S3 Error for ${bucket}/${key}:`, err.message);
+                        return null;
+                    });
+                    if (!s3Response || !s3Response.Body) return null;
+                    const chunks = [];
+                    for await (const chunk of s3Response.Body as any) chunks.push(chunk);
+                    return Buffer.from(Uint8Array.from([].concat(...chunks.map(c => Array.from(c)))));
+                }
+            }
+
+            // Fallback to fetch for external URLs
             const response = await fetch(url);
             if (!response.ok) return null;
             const arrayBuffer = await response.arrayBuffer();
             return Buffer.from(arrayBuffer);
         } catch (e) {
+            console.error('Error in getRemoteImageBuffer:', e);
             return null;
         }
     }
@@ -70,58 +94,73 @@ export class TechnicalVisitService {
 
     private static async drawHeader(page: PDFPage, visit: any, pdfDoc: PDFDocument, fontBold: PDFFont, fontRegular: PDFFont, pageNumber: number, totalPages: number, subtitle: string) {
         const marginX = mmToPt(15);
-        let currentY = mmToPt(297) - mmToPt(20);
+        let currentY = mmToPt(297) - mmToPt(15);
         const black = rgb(0,0,0);
         const tableW = mmToPt(180);
 
+        // Draw Outer Box for Header
+        const headerH = mmToPt(45);
+        page.drawRectangle({ x: marginX, y: currentY - headerH, width: tableW, height: headerH, borderColor: black, borderWidth: 1 });
+
+        // Logo Section
         const logoBuf = await this.getLocalImageBuffer('sesmt.png');
         if (logoBuf) {
             try {
                 const logo = await pdfDoc.embedPng(logoBuf);
-                page.drawImage(logo, { x: marginX, y: currentY - mmToPt(15), width: mmToPt(40), height: mmToPt(15) });
+                page.drawImage(logo, { x: marginX + mmToPt(2), y: currentY - mmToPt(12), width: mmToPt(40), height: mmToPt(10) });
             } catch (e) { }
         }
 
-        page.drawText('VISITA TÉCNICA', { x: mmToPt(90), y: currentY, size: 12, font: fontBold, color: black });
-        page.drawText(subtitle, { x: mmToPt(80), y: currentY - mmToPt(8), size: 12, font: fontBold, color: black });
-        page.drawText(`Página ${pageNumber} de ${totalPages}`, { x: mmToPt(160), y: currentY - mmToPt(4), size: 10, font: fontRegular, color: black });
+        // Title Section (Middle)
+        this.drawLine(page, marginX + mmToPt(45), currentY, marginX + mmToPt(45), currentY - mmToPt(15));
+        page.drawText('VISITA TÉCNICA', { x: marginX + mmToPt(50), y: currentY - mmToPt(6), size: 12, font: fontBold });
+        page.drawText(subtitle.toUpperCase(), { x: marginX + mmToPt(50), y: currentY - mmToPt(12), size: 10, font: fontBold });
 
-        currentY -= mmToPt(20);
+        // Page Number Section (Right)
+        this.drawLine(page, marginX + tableW - mmToPt(35), currentY, marginX + tableW - mmToPt(35), currentY - mmToPt(15));
+        page.drawText(`Página ${pageNumber} de ${totalPages}`, { x: marginX + tableW - mmToPt(33), y: currentY - mmToPt(10), size: 10, font: fontRegular });
+
+        // Horizontal Line below first row
+        currentY -= mmToPt(15);
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
-        
+
+        // Second Row: Date, Emitted By, Revision
         const col1X = marginX + mmToPt(2);
         const col2X = marginX + mmToPt(60);
         const col3X = marginX + mmToPt(140);
+        this.drawLine(page, col2X - mmToPt(2), currentY, col2X - mmToPt(2), currentY - mmToPt(12));
+        this.drawLine(page, col3X - mmToPt(2), currentY, col3X - mmToPt(2), currentY - mmToPt(12));
 
-        page.drawText('Data de Emissão', { x: col1X, y: currentY - mmToPt(5), size: 10, font: fontBold });
-        page.drawText('Responsável', { x: col2X, y: currentY - mmToPt(5), size: 10, font: fontBold });
-        page.drawText('Revisão', { x: col3X, y: currentY - mmToPt(5), size: 10, font: fontBold });
+        page.drawText('Data de Emissão', { x: col1X, y: currentY - mmToPt(4), size: 8, font: fontBold });
+        page.drawText('Emissor', { x: col2X, y: currentY - mmToPt(4), size: 8, font: fontBold });
+        page.drawText('Revisão', { x: col3X, y: currentY - mmToPt(4), size: 8, font: fontBold });
 
-        currentY -= mmToPt(12);
         const dateStr = visit.date ? new Date(visit.date).toLocaleDateString('pt-BR') : '';
-        page.drawText(dateStr, { x: col1X, y: currentY, size: 10, font: fontRegular });
-        page.drawText(visit.registeredBy || '', { x: col2X, y: currentY, size: 10, font: fontRegular });
-        page.drawText('02', { x: col3X, y: currentY, size: 10, font: fontRegular });
+        page.drawText(dateStr, { x: col1X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
+        page.drawText(visit.registeredBy || '', { x: col2X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
+        page.drawText('03', { x: col3X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
 
-        currentY -= mmToPt(6);
+        // Horizontal Line below second row
+        currentY -= mmToPt(12);
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
 
-        currentY -= mmToPt(6);
-        page.drawText('Empresa', { x: col1X, y: currentY, size: 10, font: fontBold });
-        page.drawText(visit.companyName || '', { x: col2X, y: currentY, size: 10, font: fontRegular });
+        // Third Row: Responsible Persons
+        page.drawText('Engenheiro Responsável', { x: col1X, y: currentY - mmToPt(4), size: 8, font: fontBold });
+        page.drawText(visit.engineerResponsible || 'Não informado', { x: col1X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
 
-        currentY -= mmToPt(6);
-        page.drawText('Obra', { x: col1X, y: currentY, size: 10, font: fontBold });
-        page.drawText(visit.unitName || '', { x: col2X, y: currentY, size: 10, font: fontRegular });
+        this.drawLine(page, col2X - mmToPt(2), currentY, col2X - mmToPt(2), currentY - mmToPt(12));
+        page.drawText('Técnico de Segurança Responsável', { x: col2X, y: currentY - mmToPt(4), size: 8, font: fontBold });
+        page.drawText(visit.technicianResponsible || 'Não informado', { x: col2X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
 
-        currentY -= mmToPt(6);
-        page.drawText('Técnico em Seg. do Trabalho', { x: col1X, y: currentY, size: 10, font: fontBold });
-        page.drawText(visit.registeredBy || '', { x: col2X, y: currentY, size: 10, font: fontRegular });
-
-        currentY -= mmToPt(6);
+        // Horizontal Line below third row
+        currentY -= mmToPt(12);
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
 
-        return currentY;
+        // Fourth Row: Unit/Company
+        page.drawText('Unidade / Obra', { x: col1X, y: currentY - mmToPt(4), size: 8, font: fontBold });
+        page.drawText(`${visit.unitName || ''} - ${visit.companyName || ''}`, { x: col1X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
+
+        return currentY - mmToPt(12);
     }
 
     public static async generateReport(visit: any, prisma: any): Promise<Buffer> {
@@ -165,7 +204,8 @@ export class TechnicalVisitService {
 
         if (visit.photoUrl) {
             try {
-                const imgBuf = await this.getRemoteImageBuffer(visit.photoUrl);
+                const imgUrl = visit.photoUrl.startsWith('http') || visit.photoUrl.startsWith('/api/') ? visit.photoUrl : `/api/files/foto-visita-dpbarros/${visit.photoUrl}`;
+                const imgBuf = await this.getRemoteImageBuffer(imgUrl);
                 if (imgBuf) {
                     const img = await pdfDoc.embedJpg(imgBuf).catch(() => pdfDoc.embedPng(imgBuf));
                     const maxWidth = mmToPt(140);
@@ -226,10 +266,11 @@ export class TechnicalVisitService {
         // Image
         if (inspection.image) {
             try {
-                const imgBuf = await this.getRemoteImageBuffer(inspection.image);
+                const imgUrl = inspection.image.startsWith('http') || inspection.image.startsWith('/api/') ? inspection.image : `/api/files/foto-inspecao-dpbarros/${inspection.image}`;
+                const imgBuf = await this.getRemoteImageBuffer(imgUrl);
                 if (imgBuf) {
                     const img = await pdfDoc.embedJpg(imgBuf).catch(() => pdfDoc.embedPng(imgBuf));
-                    const maxWidth = mmToPt(140);
+                    const maxWidth = mmToPt(160);
                     const maxHeight = mmToPt(100);
                     const dims = img.scaleToFit(maxWidth, maxHeight);
                     page.drawImage(img, {
@@ -240,6 +281,7 @@ export class TechnicalVisitService {
                     });
                 }
             } catch (e) {
+                console.error('Error embedding inspection image:', e);
                 page.drawText('(Falha ao carregar foto da inspeção)', { x: mmToPt(80), y: currentY - mmToPt(50), size: 10, font: fontRegular });
             }
         } else {
@@ -247,30 +289,41 @@ export class TechnicalVisitService {
         }
 
         currentY -= mmToPt(120);
-        page.drawText('CONFORMIDADE/AÇÃO CORRETIVA', { x: mmToPt(75), y: currentY, size: 11, font: fontBold });
+
+        // TABLE: CONFORMIDADE / AÇÃO CORRETIVA
+        const tableW = mmToPt(180);
+        const col1W = mmToPt(40);
+        const marginX = mmToPt(15);
         
-        currentY -= mmToPt(10);
-        page.drawText('Conformidade: ', { x: mmToPt(15), y: currentY, size: 11, font: fontBold });
-        currentY = this.drawTextWrapped(page, inspection.description || '', mmToPt(15) + fontBold.widthOfTextAtSize('Conformidade: ', 11), currentY, { font: fontRegular, size: 11, maxWidth: mmToPt(150) });
+        // Header
+        page.drawRectangle({ x: marginX, y: currentY - mmToPt(8), width: tableW, height: mmToPt(8), color: rgb(0.15, 0.15, 0.15) });
+        page.drawText('CONFORMIDADE / AÇÃO CORRETIVA', { x: marginX + mmToPt(50), y: currentY - mmToPt(6), size: 10, font: fontBold, color: rgb(1,1,1) });
+        currentY -= mmToPt(8);
 
-        currentY -= mmToPt(5);
-        page.drawText('Risco/Perigo: ', { x: mmToPt(15), y: currentY, size: 11, font: fontBold });
-        currentY = this.drawTextWrapped(page, inspection.risk || 'Nada Consta', mmToPt(15) + fontBold.widthOfTextAtSize('Risco/Perigo: ', 11), currentY, { font: fontRegular, size: 11, maxWidth: mmToPt(150) });
+        const drawRow = (label: string, value: string, height = 12) => {
+            const h = mmToPt(height);
+            page.drawRectangle({ x: marginX, y: currentY - h, width: tableW, height: h, borderColor: rgb(0,0,0), borderWidth: 0.5 });
+            this.drawLine(page, marginX + col1W, currentY, marginX + col1W, currentY - h);
+            page.drawText(label, { x: marginX + mmToPt(2), y: currentY - mmToPt(5), size: 9, font: fontBold });
+            
+            // Wrap text for value
+            this.drawTextWrapped(page, value || 'Nada Consta', marginX + col1W + mmToPt(2), currentY - mmToPt(5), { font: fontRegular, size: 9, maxWidth: tableW - col1W - mmToPt(4) });
+            currentY -= h;
+        };
 
-        currentY -= mmToPt(5);
-        page.drawText('Ação Imediata: ', { x: mmToPt(15), y: currentY, size: 11, font: fontBold });
-        currentY = this.drawTextWrapped(page, inspection.resolution || 'Nada Consta', mmToPt(15) + fontBold.widthOfTextAtSize('Ação Imediata: ', 11), currentY, { font: fontRegular, size: 11, maxWidth: mmToPt(150) });
+        drawRow('Conformidade', inspection.description || '', 18);
+        drawRow('Risco/Perigo', inspection.risk || 'Nada Consta', 15);
+        drawRow('Ação Imediata', inspection.resolution || 'Nada Consta', 15);
+        drawRow('Ação Corretiva', inspection.correctiveAction || 'Nada Consta', 15);
 
-        currentY -= mmToPt(5);
-        page.drawText('Ação Corretiva: ', { x: mmToPt(15), y: currentY, size: 11, font: fontBold });
-        currentY = this.drawTextWrapped(page, inspection.correctiveAction || 'Nada Consta', mmToPt(15) + fontBold.widthOfTextAtSize('Ação Corretiva: ', 11), currentY, { font: fontRegular, size: 11, maxWidth: mmToPt(150) });
-
-        currentY -= mmToPt(5);
+        // Deadlines Row
+        page.drawRectangle({ x: marginX, y: currentY - mmToPt(10), width: tableW, height: mmToPt(10), borderColor: rgb(0,0,0), borderWidth: 0.5 });
         const deadlineStr = inspection.deadline ? new Date(inspection.deadline).toLocaleDateString('pt-BR') : 'N/A';
         const finalDeadlineStr = inspection.finalDeadline ? new Date(inspection.finalDeadline).toLocaleDateString('pt-BR') : 'N/A';
         
-        page.drawText(`Prazo Inicial: ${deadlineStr}`, { x: mmToPt(15), y: currentY, size: 10, font: fontBold });
-        page.drawText(`Prazo Final: ${finalDeadlineStr}`, { x: mmToPt(115), y: currentY, size: 10, font: fontBold });
+        page.drawText(`Prazo Inicial: ${deadlineStr}`, { x: marginX + mmToPt(2), y: currentY - mmToPt(7), size: 9, font: fontBold });
+        this.drawLine(page, marginX + mmToPt(90), currentY, marginX + mmToPt(90), currentY - mmToPt(10));
+        page.drawText(`Prazo Final: ${finalDeadlineStr}`, { x: marginX + mmToPt(92), y: currentY - mmToPt(7), size: 9, font: fontBold });
     }
 
 
@@ -381,6 +434,12 @@ export class TechnicalVisitService {
                 await ensure();
                 const bg = ri%2===0 ? rgb(0.97,0.97,0.97) : rgb(1,1,1);
                 pg.drawRectangle({ x: mx, y: cy-rh+mmToPt(1.2), width: tw, height: rh, color: bg });
+                
+                // Vertical lines for the checklist row
+                this.drawLine(pg, mx, cy+mmToPt(1.2), mx, cy-rh+mmToPt(1.2), blk, 0.5);
+                this.drawLine(pg, mx+tw, cy+mmToPt(1.2), mx+tw, cy-rh+mmToPt(1.2), blk, 0.5);
+                this.drawLine(pg, cCx-mmToPt(2), cy+mmToPt(1.2), cCx-mmToPt(2), cy-rh+mmToPt(1.2), rgb(0.7,0.7,0.7), 0.5);
+
                 pg.drawText(`${id}  ${(TEXTS[id]||'').substring(0,88)}`, { x: mx+mmToPt(2), y: cy-mmToPt(5), size: 7.5, font: fontRegular, color: blk });
                 const a = answers[id]||'C';
                 const by = cy-rh+mmToPt(2); const bh = mmToPt(4); const bw = mmToPt(6);
@@ -390,7 +449,7 @@ export class TechnicalVisitService {
                 if (a==='C')  pg.drawText('C',  { x: cCx+mmToPt(1.5),  y: by+mmToPt(0.8), size: 7, font: fontBold, color: rgb(1,1,1) });
                 if (a==='NC') pg.drawText('NC', { x: cNCx-mmToPt(0.5), y: by+mmToPt(0.8), size: 7, font: fontBold, color: rgb(1,1,1) });
                 if (a==='NA') pg.drawText('NA', { x: cNAx-mmToPt(0.5), y: by+mmToPt(0.8), size: 7, font: fontBold, color: rgb(1,1,1) });
-                this.drawLine(pg, mx, cy-rh+mmToPt(1.2), mx+tw, cy-rh+mmToPt(1.2), rgb(0.75,0.75,0.75), 0.3);
+                this.drawLine(pg, mx, cy-rh+mmToPt(1.2), mx+tw, cy-rh+mmToPt(1.2), blk, 0.5);
                 cy -= rh; ri++;
             }
         }
