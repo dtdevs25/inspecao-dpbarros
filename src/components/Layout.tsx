@@ -22,7 +22,8 @@ import {
   Building2,
   Users,
   ChevronDown,
-  Tags
+  Tags,
+  Camera
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useUser } from '../contexts/UserContext';
