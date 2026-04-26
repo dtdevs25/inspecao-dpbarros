@@ -6,6 +6,7 @@ import { useUser } from '../contexts/UserContext';
 import { uploadFile } from '../lib/upload';
 import { compressImage } from '../lib/utils';
 import { TECHNICAL_CHECKLIST, ChecklistAnswers, DEFAULT_CHECKLIST_ANSWERS, ALL_CHECKLIST_ITEMS } from '../constants/technicalChecklist';
+import { SignaturePad } from './SignaturePad';
 
 const SESMT_FIELDS = [
   { key: 'pgr',          label: 'PGR' },
@@ -51,6 +52,8 @@ export default function TechnicalVisits() {
     checklistAnswers: { ...DEFAULT_CHECKLIST_ANSWERS } as ChecklistAnswers,
     engineerResponsible: '',
     technicianResponsible: '',
+    technicianSignature: null as string | null,
+    engineerSignature: null as string | null,
   });
   const [form, setForm] = useState(emptyForm());
 
@@ -123,7 +126,27 @@ export default function TechnicalVisits() {
         updatedAt: serverTimestamp(),
       };
       if (selectedFile) data.photoUrl = await uploadFile(selectedFile, 'foto-visita-dpbarros');
-      else if (imagePreview) data.photoUrl = form.photoUrl || imagePreview;
+      else if (imagePreview) data.photoUrl = (form as any).photoUrl || imagePreview;
+
+      const dataURLtoFile = (dataurl: string, filename: string) => {
+        const arr = dataurl.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) { u8arr[n] = bstr.charCodeAt(n); }
+        return new File([u8arr], filename, { type: mime });
+      };
+
+      if (form.technicianSignature?.startsWith('data:image')) {
+        const file = dataURLtoFile(form.technicianSignature, `tech-sig-${Date.now()}.png`);
+        data.technicianSignature = await uploadFile(file, 'assinatura-dpbarros');
+      }
+      
+      if (form.engineerSignature?.startsWith('data:image')) {
+        const file = dataURLtoFile(form.engineerSignature, `eng-sig-${Date.now()}.png`);
+        data.engineerSignature = await uploadFile(file, 'assinatura-dpbarros');
+      }
 
       if (viewMode === 'edit' && selectedItem) {
         await updateDoc(doc(db, 'technical_visits', selectedItem.id), data);
@@ -313,15 +336,29 @@ export default function TechnicalVisits() {
 
           {/* Section 4: Final Notes */}
           {activeSection === 4 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h3 className="text-[#27AE60] font-bold text-lg">Anotacoes Finais e Assinaturas</h3>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Anotacoes de Nao Conformidade e/ou Recomendacoes</label>
-                <textarea rows={8} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                <textarea rows={6} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
                   placeholder="Descreva as nao conformidades, recomendacoes e prazos..."
                   value={form.finalNotes} onChange={e => setForm({ ...form, finalNotes: e.target.value })} />
               </div>
-              <p className="text-xs text-gray-400 italic">As linhas de assinatura (Tecnico SESMT e Responsavel da Obra) serao geradas automaticamente no PDF.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <SignaturePad 
+                  label="Assinatura do Técnico SESMT"
+                  initialSignature={form.technicianSignature}
+                  onSignatureChange={(url) => setForm({ ...form, technicianSignature: url })}
+                />
+                <SignaturePad 
+                  label="Assinatura do Engenheiro/Responsável"
+                  initialSignature={form.engineerSignature}
+                  onSignatureChange={(url) => setForm({ ...form, engineerSignature: url })}
+                />
+              </div>
+              
+              <p className="text-xs text-gray-400 italic">As assinaturas desenhadas acima serão impressas no final do relatório em PDF.</p>
             </div>
           )}
 

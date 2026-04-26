@@ -327,6 +327,12 @@ export const TECHNICAL_CHECKLIST: ChecklistCategory[] = [
       { id: '24.2', text: 'As escavações com profundidade superior a 1,25 m estão protegidas com taludes ou escoramentos conforme projeto técnico? (NR-18.7.2.8)' },
       { id: '24.3', text: 'As escavações profundas possuem escadas ou rampas próximas aos postos de trabalho para evacuação de emergência? (NR-18.7.2.8)' },
       { id: '24.4', text: 'As escavações são previamente avaliadas quanto à presença de redes subterrâneas (elétricas, hidráulicas, gás, etc.)?' },
+      { id: '24.5', text: 'As escavações estão devidamente sinalizadas e isoladas para prevenir quedas de trabalhadores ou terceiros? (NR-18.7.2.5)' },
+      { id: '24.6', text: 'Há inspeção periódica da estabilidade das paredes da escavação por profissional qualificado? (NR-18.6.2.5)' },
+      { id: '24.7', text: 'O material escavado está depositado a uma distância segura da borda da escavação? (NR-18.6.2.3)' },
+      { id: '24.8', text: 'Os trabalhadores usam os EPIs adequados (capacete, botas, luvas, etc.) durante as atividades de escavação? (NR-6 / NR-18.28)' },
+      { id: '24.9', text: 'A escavação possui acesso seguro e livre de obstáculos para a movimentação de pessoas e equipamentos? (NR-18.6.2.6)' },
+      { id: '24.10', text: 'Os serviços de escavação são interrompidos em caso de risco iminente (chuvas intensas, instabilidade, etc.)?' },
     ],
   },
 ];

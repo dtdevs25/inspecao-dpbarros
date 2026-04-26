@@ -460,7 +460,7 @@ export class TechnicalVisitService {
             {id:'21.0',t:'Abastecimento dos Maquinarios',i:['21.1','21.2','21.3','21.4','21.5']},
             {id:'22.0',t:'Condicoes Adequadas para o SESMT',i:['22.1','22.2','22.3','22.4','22.5','22.6','22.7','22.8','22.9']},
             {id:'23.0',t:'Instalacoes Eletricas - NR-18 e NR-10',i:['23.1','23.2','23.3','23.4','23.5','23.6','23.7','23.8','23.9','23.10']},
-            {id:'24.0',t:'Escavacao, Fundacao e Desmonte de Rocha',i:['24.1','24.2','24.3','24.4']},
+            {id:'24.0',t:'Escavacao, Fundacao e Desmonte de Rocha',i:['24.1','24.2','24.3','24.4','24.5','24.6','24.7','24.8','24.9','24.10']},
         ] as const;
 
         const TEXTS: Record<string,string> = {
@@ -487,7 +487,7 @@ export class TechnicalVisitService {
             '21.1':'Existe armazenamento de combustivel na obra?','21.2':'Abastecimento feito com isolamento de 7,5m','21.3':'Obra possui kit de mitigacao (KPA)','21.4':'Plano de emergencia e telefones de contato disponiveis','21.5':'Abastecedor habilitado, treinado e autorizado',
             '22.1':'Quadro SESMT dimensionado conforme NR04','22.2':'Sala para equipe de Seguranca do Trabalho','22.3':'Equipe SST com equipamento para impressao/scanner','22.4':'Equipe dispoe de computador','22.5':'Profissional SST com auxiliar administrativo','22.6':'Equipe SST com celular para comunicacao','22.7':'Estoques de EPI de acordo com o efetivo','22.8':'Dispositivos de sinalizacao para atividades SST','22.9':'Equipe SST participa das tomadas de decisao',
             '23.1':'Quadros eletricos sinalizados e identificados (NR-18.6.10)','23.2':'Circuitos eletricos identificados nos quadros','23.3':'Quadros com acesso desobstruido e espaco suficiente','23.4':'Partes vivas inacessiveis a nao-autorizados','23.5':'Protecao contra contatos diretos e indiretos','23.6':'Condutores em bom estado, isolados e dimensionados','23.7':'Sistema de aterramento eficiente','23.8':'Sinalizacao nas areas com risco eletrico','23.9':'Somente autorizados atuam em servicos eletricos','23.10':'Laudo tecnico sobre SPDA disponivel',
-            '24.1':'Projeto de escavacao por profissional habilitado','24.2':'Escavacoes > 1,25m com taludes ou escoramento','24.3':'Escavacoes profundas com escadas ou rampas','24.4':'Escavacoes avaliadas quanto a redes subterraneas',
+            '24.1':'Projeto de escavacao por profissional habilitado','24.2':'Escavacoes > 1,25m com taludes ou escoramento','24.3':'Escavacoes profundas com escadas ou rampas','24.4':'Escavacoes avaliadas quanto a redes subterraneas','24.5':'Escavacoes sinalizadas e isoladas','24.6':'Inspecao periodica de estabilidade das paredes','24.7':'Material escavado depositado a distancia segura','24.8':'Trabalhadores usam EPIs adequados na escavacao','24.9':'Acesso seguro e livre de obstaculos','24.10':'Servicos interrompidos em caso de risco iminente',
         };
 
         const answers: Record<string,string> = (visit.checklistAnswers as any) || {};
@@ -574,40 +574,75 @@ export class TechnicalVisitService {
             }
         }
 
-        // Final page - notes + signatures
-        pg = pdfDoc.addPage([mmToPt(210), mmToPt(297)]);
-        cy = await this.drawHeader(pg, visit, pdfDoc, fontBold, fontRegular, pn, totalPages, 'Anotações e Assinaturas');
-        cy -= mmToPt(10);
-        pg.drawText('Anotações de Não Conformidade e/ou Recomendações:', { x: mx, y: cy, size: 11, font: fontBold, color: blk });
-        cy -= mmToPt(5);
+        // Check if there's enough space for the notes and signatures
+        if (cy < mmToPt(20) + mmToPt(140)) {
+            pg = pdfDoc.addPage([mmToPt(210), mmToPt(297)]);
+            pn++;
+            cy = await this.drawHeader(pg, visit, pdfDoc, fontBold, fontRegular, pn, totalPages, 'Anotações e Assinaturas');
+            cy -= mmToPt(5);
+        } else {
+            cy -= mmToPt(5); // Spacing from checklist
+        }
+        
+        // Draw the blue header for notes
+        const blueColor = rgb(0.12, 0.22, 0.45); // Dark blue matching header
+        pg.drawRectangle({ x: mx, y: cy-mmToPt(8), width: tw, height: mmToPt(8), color: blueColor });
+        pg.drawText('NÃO CONFORMIDADE E/OU RECOMENDAÇÕES', { x: mx + mmToPt(2), y: cy - mmToPt(5.5), size: 9, font: fontBold, color: rgb(1,1,1) });
+        pg.drawText('PRAZO PARA REGULARIZAÇÃO', { x: mx + tw - mmToPt(65), y: cy - mmToPt(5.5), size: 9, font: fontBold, color: rgb(1,1,1) });
+        cy -= mmToPt(8);
         
         // Notes Box
-        const boxHeight = mmToPt(70);
+        const boxHeight = mmToPt(65);
         pg.drawRectangle({ x: mx, y: cy-boxHeight, width: tw, height: boxHeight, borderColor: blk, borderWidth: 0.5 });
+        
+        // Split for Prazo column (x = mx + tw - mmToPt(70))
+        this.drawLine(pg, mx + tw - mmToPt(70), cy, mx + tw - mmToPt(70), cy - boxHeight, blk, 0.5);
+
         if (visit.finalNotes) {
             let ny = cy - mmToPt(6);
             for (const line of String(visit.finalNotes).split('\n')) {
-                ny = this.drawTextWrapped(pg, line, mx+mmToPt(2), ny, { font: fontRegular, size: 10, maxWidth: tw-mmToPt(4) });
+                ny = this.drawTextWrapped(pg, line, mx+mmToPt(2), ny, { font: fontRegular, size: 9, maxWidth: tw - mmToPt(74) });
                 if (ny < cy - boxHeight + mmToPt(4)) break;
             }
         } else {
             // Draw lines inside the box if empty to match model
-            let lineY = cy - mmToPt(10);
+            let lineY = cy - mmToPt(8);
             while (lineY > cy - boxHeight + mmToPt(5)) {
-                this.drawLine(pg, mx, lineY, mx+tw, lineY, rgb(0.8,0.8,0.8), 0.5);
+                this.drawLine(pg, mx, lineY, mx + tw - mmToPt(70), lineY, rgb(0.8,0.8,0.8), 0.5);
                 lineY -= mmToPt(8);
             }
         }
+        
+        // Draw empty lines for the "Prazo" column
+        let prazoY = cy - mmToPt(15);
+        while (prazoY > cy - boxHeight + mmToPt(5)) {
+            pg.drawText('___/___/___', { x: mx + tw - mmToPt(50), y: prazoY, size: 9, font: fontRegular, color: blk });
+            prazoY -= mmToPt(15);
+        }
+
         cy -= boxHeight;
-        
-        cy -= mmToPt(10);
-        pg.drawText('Prazo para Regularização: _____/_____/_____', { x: mx, y: cy, size: 11, font: fontBold, color: blk });
-        cy -= mmToPt(5);
-        this.drawLine(pg, mx, cy, mx+tw, cy, blk, 0.5);
-        
         cy -= mmToPt(35);
         const sw = mmToPt(80);
         
+        // Draw Signatures Images (if any)
+        try {
+            if ((visit as any).technicianSignature) {
+                const imgBuf = await this.getRemoteImageBuffer((visit as any).technicianSignature);
+                const sigImg = await pdfDoc.embedPng(imgBuf).catch(() => pdfDoc.embedJpg(imgBuf));
+                const dims = sigImg.scaleToFit(sw, mmToPt(25));
+                pg.drawImage(sigImg, { x: mx + sw/2 - dims.width/2, y: cy + mmToPt(2), width: dims.width, height: dims.height });
+            }
+        } catch (e) { console.error('Erro ao baixar assinatura do tecnico', e); }
+
+        try {
+            if ((visit as any).engineerSignature) {
+                const imgBuf = await this.getRemoteImageBuffer((visit as any).engineerSignature);
+                const sigImg = await pdfDoc.embedPng(imgBuf).catch(() => pdfDoc.embedJpg(imgBuf));
+                const dims = sigImg.scaleToFit(sw, mmToPt(25));
+                pg.drawImage(sigImg, { x: mx + tw - sw/2 - dims.width/2, y: cy + mmToPt(2), width: dims.width, height: dims.height });
+            }
+        } catch (e) { console.error('Erro ao baixar assinatura do engenheiro', e); }
+
         // Technician Signature
         this.drawLine(pg, mx, cy, mx+sw, cy, blk, 0.5);
         const techName = visit.technicianResponsible || '';
