@@ -118,18 +118,23 @@ export class TechnicalVisitService {
         if (logoBuf) {
             try {
                 const logo = await pdfDoc.embedPng(logoBuf);
-                const lH = mmToPt(14);
-                const lW = mmToPt(30);
-                page.drawImage(logo, { x: marginX + (colLogoW - lW)/2, y: currentY - mmToPt(17), width: lW, height: lH });
+                const dims = logo.scaleToFit(colLogoW - mmToPt(4), mmToPt(16));
+                page.drawImage(logo, { 
+                    x: marginX + (colLogoW - dims.width)/2, 
+                    y: currentY - mmToPt(2) - (mmToPt(16) - dims.height)/2 - dims.height, 
+                    width: dims.width, 
+                    height: dims.height 
+                });
             } catch (e) { }
         }
 
         // Row 1: VISITA TÉCNICA
         const row1H = mmToPt(8);
-        page.drawText('VISITA TÉCNICA', { 
-            x: marginX + colLogoW + (tableW - colLogoW)/2 - (fontBold.widthOfTextAtSize('VISITA TÉCNICA', 12)/2), 
-            y: currentY - mmToPt(6), size: 12, font: fontBold 
-        });
+        const drawCentered = (txt: string, x: number, w: number, y: number, f: PDFFont, s: number) => {
+            page.drawText(txt, { x: x + (w - f.widthOfTextAtSize(txt, s))/2, y, font: f, size: s });
+        };
+
+        drawCentered('VISITA TÉCNICA', marginX + colLogoW, tableW - colLogoW, currentY - mmToPt(6), fontBold, 12);
         currentY -= row1H;
         this.drawLine(page, marginX + colLogoW, currentY, marginX + tableW, currentY);
 
@@ -138,14 +143,9 @@ export class TechnicalVisitService {
         const colPageW = mmToPt(35);
         this.drawLine(page, marginX + tableW - colPageW, currentY, marginX + tableW - colPageW, currentY - row2H);
         
-        page.drawText(subtitle.toUpperCase(), { 
-            x: marginX + colLogoW + (tableW - colLogoW - colPageW)/2 - (fontBold.widthOfTextAtSize(subtitle.toUpperCase(), 11)/2), 
-            y: currentY - mmToPt(8), size: 11, font: fontBold 
-        });
-        page.drawText(`Página ${pageNumber} de ${totalPages}`, { 
-            x: marginX + tableW - colPageW + mmToPt(2), 
-            y: currentY - mmToPt(8), size: 9, font: fontRegular 
-        });
+        drawCentered(subtitle.toUpperCase(), marginX + colLogoW, tableW - colLogoW - colPageW, currentY - mmToPt(8), fontBold, 11);
+        drawCentered(`Página ${pageNumber} de ${totalPages}`, marginX + tableW - colPageW, colPageW, currentY - mmToPt(8), fontRegular, 9);
+        
         currentY -= row2H;
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
 
@@ -156,10 +156,6 @@ export class TechnicalVisitService {
         const col2W = tableW - col1W - col3W;
         this.drawLine(page, marginX + col1W, currentY, marginX + col1W, currentY - row3H);
         this.drawLine(page, marginX + col1W + col2W, currentY, marginX + col1W + col2W, currentY - row3H);
-
-        const drawCentered = (txt: string, x: number, w: number, y: number, f: PDFFont, s: number) => {
-            page.drawText(txt, { x: x + (w - f.widthOfTextAtSize(txt, s))/2, y, font: f, size: s });
-        };
 
         drawCentered('Data de Emissão', marginX, col1W, currentY - mmToPt(5), fontBold, 9);
         drawCentered('Responsável', marginX + col1W, col2W, currentY - mmToPt(5), fontBold, 9);
@@ -192,9 +188,10 @@ export class TechnicalVisitService {
             }
         };
 
-        drawRespRow(`Responsável da Obra ${visit.unitName?.split('-')[0]?.trim() || ''}`, visit.engineerResponsible || '');
-        drawRespRow(`Responsável da Obra ${visit.unitName?.split('-')[0]?.trim() || ''}`, visit.engineerResponsible || ''); // Repeat as per model or leave empty
-        drawRespRow(`Técnico em Seg. do Trabalho da Obra ${visit.unitName?.split('-')[0]?.trim() || ''}`, visit.technicianResponsible || '');
+        const unitDisplay = visit.unitName || '';
+        drawRespRow(`Responsável da Obra ${unitDisplay}`, visit.engineerResponsible || '');
+        drawRespRow(`Responsável da Obra ${unitDisplay}`, visit.engineerResponsible || ''); 
+        drawRespRow(`Técnico em Seg. do Trabalho da Obra ${unitDisplay}`, visit.technicianResponsible || '');
 
         return mmToPt(297) - mmToPt(15) - headerH;
     }
