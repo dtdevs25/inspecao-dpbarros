@@ -14,6 +14,7 @@ import TypesOfEntries from './components/TypesOfEntries';
 import PublicReport from './components/PublicReport';
 import CompanyPanel from './components/CompanyPanel';
 import ResetPassword from './components/ResetPassword';
+import TechnicalVisits from './components/TechnicalVisits';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -108,6 +109,8 @@ function AppContent() {
     switch (activeTab) {
       case 'Dashboard':
         return <Dashboard setActiveTab={setActiveTab} setPrefilledData={setPrefilledData} />;
+      case 'Relatório Fotográfico':
+        return <TechnicalVisits />;
       case 'Inspeções':
         return <Inspections setActiveTab={setActiveTab} setPrefilledData={setPrefilledData} prefilledData={prefilledData} onClearPrefilledData={() => setPrefilledData(null)} />;
       case 'Planos de Ação':

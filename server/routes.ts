@@ -7,6 +7,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendEmail } from './email';
 import { LegacyReportService } from './reports/LegacyReportService';
 import { DailyChecklistService } from './reports/DailyChecklistService';
+import { TechnicalVisitService } from './reports/TechnicalVisitService';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -618,6 +619,80 @@ router.post('/gemini/correct', authenticate, async (req: any, res: any) => {
     }
 });
 
+// --- TECHNICAL VISIT: AI AUTO-FILL CHECKLIST ---
+router.post('/api/reports/technical-visit/auto-fill-checklist', authenticate, async (req: any, res: any) => {
+    try {
+        const { inspections, checklistItems } = req.body;
+        if (!inspections || !checklistItems) {
+            return res.status(400).json({ error: 'inspections e checklistItems são obrigatórios' });
+        }
+
+        const inspectionSummary = (inspections as any[]).map((insp: any, i: number) =>
+            `Inspeção ${i + 1}: [Apontamento: "${insp.description}"] [Risco: "${insp.risk}"] [Ação Imediata: "${insp.resolution}"] [Ação Corretiva: "${insp.correctiveAction || ''}"]`
+        ).join('\n');
+
+        const checklistSummary = (checklistItems as any[]).map((item: any) =>
+            `${item.id}: ${item.text}`
+        ).join('\n');
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+        const prompt = `Você é um especialista em Segurança do Trabalho (SESMT). Analise as inspeções/apontamentos abaixo e preencha o checklist de conformidade.
+
+INSPEÇÕES DO PERÍODO:
+${inspectionSummary}
+
+ITENS DO CHECKLIST (responda com C=Conforme, NC=Não Conforme ou NA=Não se Aplica para cada item):
+${checklistSummary}
+
+REGRAS:
+- Se um apontamento indica violação direta ou relacionada ao item, marque "NC"
+- Se o item não se aplica à obra, marque "NA"
+- Para todo o resto, marque "C"
+- Responda SOMENTE com um JSON válido no formato: { "1.1": "C", "1.2": "NC", ... }
+- Inclua TODOS os itens listados no JSON de resposta.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: prompt,
+            config: { temperature: 0.2 },
+        });
+
+        const rawText = response.text?.trim() || '{}';
+        // Extract JSON from the response (it may be wrapped in markdown code block)
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : '{}';
+        const answers = JSON.parse(jsonStr);
+        res.json({ answers });
+    } catch (e: any) {
+        console.error('Erro no auto-fill checklist:', e);
+        res.status(500).json({ error: 'Erro ao preencher checklist via IA', details: e.message });
+    }
+});
+
+// --- TECHNICAL VISIT REPORT ROUTE ---
+router.get('/api/reports/technical-visit/:id/pdf', authenticate, async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const visit = await prisma.technicalVisit.findUnique({ where: { id } });
+        if (!visit) return res.status(404).json({ error: 'Visita técnica não encontrada' });
+        
+        // Ensure user has access
+        const tenantFilter = await getTenantFilter(req.user, 'technical_visits');
+        // Basic check if user has access to the company
+        if (req.user.role !== 'Master' && tenantFilter.companyId && tenantFilter.companyId.in && !tenantFilter.companyId.in.includes(visit.companyId)) {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+
+        const pdfBuffer = await TechnicalVisitService.generateReport(visit, prisma);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="relatorio_tecnico_${id.substring(0,6)}.pdf"`);
+        res.send(pdfBuffer);
+    } catch (e: any) {
+        console.error("Erro ao gerar PDF da visita técnica:", e);
+        res.status(500).json({ error: "Erro ao gerar PDF", details: e.message });
+    }
+});
+
 // --- GENERIC CRUD ROUTES FOR MIGRATING FROM FIREBASE TO POSTGRESQL ---
 // Map the frontend collection names to Prisma model names
 const prismaModels: Record<string, keyof typeof prisma> = {
@@ -633,7 +708,8 @@ const prismaModels: Record<string, keyof typeof prisma> = {
     'projects': 'project',
     'type_of_entries': 'typeOfEntry',
     'report_templates': 'reportTemplate',
-    'system_logs': 'systemLog'
+    'system_logs': 'systemLog',
+    'technical_visits': 'technicalVisit'
 };
 
 // Mapping of collections that have files in MinIO to their field and bucket
@@ -643,7 +719,8 @@ const collectionFileMappers: Record<string, { field: string, bucket: string }> =
     'action_plans': { field: 'photoAfter', bucket: BUCKETS.FOTO_PLANODEACAO },
     'companies': { field: 'logo', bucket: BUCKETS.LOGO_EMPRESA },
     'projects': { field: 'image', bucket: BUCKETS.FOTO_PROJETO },
-    'report_templates': { field: 'minioUrl', bucket: BUCKETS.MODELOS_RELATORIOS }
+    'report_templates': { field: 'minioUrl', bucket: BUCKETS.MODELOS_RELATORIOS },
+    'technical_visits': { field: 'photoUrl', bucket: BUCKETS.FOTO_VISITA }
 };
 
 // GET all items from a collection

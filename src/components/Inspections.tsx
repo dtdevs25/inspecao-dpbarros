@@ -43,6 +43,8 @@ interface Inspection {
   resolution: string;
   responsible: string;
   deadline: string;
+  correctiveAction?: string;
+  finalDeadline?: string;
   observations: string;
   status: 'Pendente' | 'Em Andamento' | 'Concluído';
   registeredBy: string;
@@ -151,6 +153,8 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
     resolution: '',
     responsible: '',
     deadline: '',
+    correctiveAction: '',
+    finalDeadline: '',
     observations: '',
     image: ''
   });
@@ -212,7 +216,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
     try {
       let photoAfterUrl = '';
       if (actionPlanFile) {
-        photoAfterUrl = await uploadFile(actionPlanFile, 'foto-planodeacao');
+        photoAfterUrl = await uploadFile(actionPlanFile, 'foto-planodeacao-dpbarros');
       }
 
       const docRef = await addDoc(collection(db, 'action_plans'), {
@@ -446,6 +450,8 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
         resolution: prefilledData.resolution || '',
         responsible: prefilledData.responsible || '',
         deadline: prefilledData.deadline || '',
+        correctiveAction: prefilledData.correctiveAction || '',
+        finalDeadline: prefilledData.finalDeadline || '',
         observations: prefilledData.observations || '',
         image: prefilledData.image || ''
       });
@@ -488,7 +494,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
 
       if (selectedFile) {
         try {
-          const fileUrl = await uploadFile(selectedFile, 'foto-inspecao');
+          const fileUrl = await uploadFile(selectedFile, 'foto-inspecao-dpbarros');
           data.image = fileUrl;
         } catch (uploadError: any) {
           setErrorMessage(`Erro ao fazer upload da evidência: ${uploadError?.message}`);
@@ -549,6 +555,8 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
       resolution: '',
       responsible: '',
       deadline: '',
+      correctiveAction: '',
+      finalDeadline: '',
       observations: '',
       image: ''
     });
@@ -576,6 +584,8 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
       resolution: item.resolution || '',
       responsible: item.responsible || '',
       deadline: item.deadline || '',
+      correctiveAction: item.correctiveAction || '',
+      finalDeadline: item.finalDeadline || '',
       observations: item.observations || '',
       image: item.image || ''
     });
@@ -1229,10 +1239,22 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                     </button>
                   </div>
                   <textarea 
-                    rows={4}
+                    rows={2}
                     value={formData.resolution}
                     onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
-                    placeholder="O que foi feito ou o que deve ser feito para resolver?"
+                    placeholder="Ação Imediata (O que foi feito no momento)"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-2 relative mt-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold text-gray-600">Ação Corretiva (Complemento)</label>
+                  </div>
+                  <textarea 
+                    rows={2}
+                    value={formData.correctiveAction}
+                    onChange={(e) => setFormData({ ...formData, correctiveAction: e.target.value })}
+                    placeholder="O que deve ser feito para resolver definitivamente?"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all"
                   />
                 </div>
@@ -1245,7 +1267,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                 <User className="h-5 w-5" />
                 Responsáveis e Prazos
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-gray-600">Responsável/Pessoa Informada</label>
                   <input 
@@ -1257,11 +1279,20 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-600">Prazo de Resolução</label>
+                  <label className="text-sm font-bold text-gray-600">Prazo Inicial</label>
                   <input 
                     type="date" 
                     value={formData.deadline}
                     onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-600">Prazo Final</label>
+                  <input 
+                    type="date" 
+                    value={formData.finalDeadline || ''}
+                    onChange={(e) => setFormData({ ...formData, finalDeadline: e.target.value })}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all" 
                   />
                 </div>

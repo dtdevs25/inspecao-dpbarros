@@ -136,7 +136,7 @@ export default function PublicReport() {
       const dataToSave = { ...formData };
       if (selectedFile) {
         try {
-          const fileUrl = await uploadFile(selectedFile, 'foto-inspecao');
+          const fileUrl = await uploadFile(selectedFile, 'foto-inspecao-dpbarros');
           dataToSave.photoUrl = fileUrl;
           dataToSave.photo = fileUrl;
         } catch (uploadError: any) {

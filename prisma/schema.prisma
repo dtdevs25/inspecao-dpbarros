@@ -92,6 +92,8 @@ model Inspection {
   resolution      String?
   responsible     String?
   deadline        String?
+  correctiveAction String?
+  finalDeadline   String?
   observations    String?
   status          String   @default("Pendente")
   registeredBy    String?
@@ -233,4 +235,40 @@ model DailyChecklist {
   pdfUrl           String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model TechnicalVisit {
+  id              String   @id @default(uuid())
+  companyId       String?
+  companyName     String?
+  unitId          String?
+  unitName        String?
+  date            String?
+  
+  // Capa
+  photoUrl        String?
+
+  // Documentação SESMT
+  pgr             String?  @default("Entregue")
+  integracao      String?  @default("Sendo realizada de acordo com padrão.")
+  fichaEpi        String?  @default("Sendo realizada de acordo com padrão.")
+  treinamentos    String?  @default("Sendo realizada de acordo com padrão.")
+  dds             String?  @default("DDS realizado 1 vez por semana com diversos temas.")
+  apr             String?  @default("Sendo realizada de acordo com padrão.")
+  checkList       String?  @default("Sendo realizada de acordo com padrão.")
+
+  // Checklist Técnico (C/NC/NA)
+  checklistAnswers Json?
+
+  // Número de funcionários e anotações finais
+  numberOfEmployees String?
+  finalNotes        String?
+
+  // Vínculo com inspeções
+  inspectionIds   String[]
+
+  registeredBy    String?
+  registeredByUid String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

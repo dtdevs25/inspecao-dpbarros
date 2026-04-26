@@ -159,6 +159,7 @@ export default function Layout({
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard',     roles: ['Master', 'Administrador', 'Gestor', 'Usuário Comum'] },
+    { icon: Camera,          label: 'Relatório Fotográfico', roles: ['Master', 'Administrador', 'Gestor', 'Usuário Comum'] },
     { icon: ClipboardList,   label: 'Inspeções',    roles: ['Master', 'Administrador', 'Gestor', 'Usuário Comum'] },
     { icon: ListTodo,        label: 'Planos de Ação', roles: ['Master', 'Administrador', 'Gestor', 'Usuário Comum'] },
     { icon: Briefcase,       label: 'Projetos',       roles: ['Master', 'Administrador', 'Gestor', 'Usuário Comum'] },

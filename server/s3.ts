@@ -15,12 +15,13 @@ export const s3 = new S3Client({
 
 // Constantes de Buckets para facilitar importação e não cometer typos
 export const BUCKETS = {
-    FOTO_INSPECAO: 'foto-inspecao',
-    FOTO_PLANODEACAO: 'foto-planodeacao',
-    FOTO_PROJETO: 'foto-projeto',
-    LOGO_EMPRESA: 'logo-empresa',
-    RELATORIO_PDF: 'relatorio-pdf',
-    MODELOS_RELATORIOS: 'modelos-relatorios'
+    FOTO_INSPECAO:       'foto-inspecao-dpbarros',
+    FOTO_PLANODEACAO:    'foto-planodeacao-dpbarros',
+    FOTO_PROJETO:        'foto-projeto-dpbarros',
+    LOGO_EMPRESA:        'logo-empresa-dpbarros',
+    RELATORIO_PDF:       'relatorio-pdf',
+    MODELOS_RELATORIOS:  'modelos-relatorios-dpbarros',
+    FOTO_VISITA:         'foto-visita-dpbarros',
 };
 
 // Configuração do Multer (mantém em memória para enviar pro S3)

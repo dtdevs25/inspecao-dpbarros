@@ -234,7 +234,7 @@ export default function Registrations() {
       // Handle File Upload to MinIO S3
       if (activeTab === 'empresas' && selectedFile) {
         try {
-          const fileUrl = await uploadFile(selectedFile, 'logo-empresa');
+          const fileUrl = await uploadFile(selectedFile, 'logo-empresa-dpbarros');
           data.logo = fileUrl; // Save URL instead of Base64
         } catch (uploadError: any) {
           alert(`Erro ao fazer upload da logo: ${uploadError?.message}`);

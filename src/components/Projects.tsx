@@ -302,7 +302,7 @@ export default function Projects() {
       
       let imageUrl = formData.image;
       if (selectedFile) {
-        imageUrl = await uploadFile(selectedFile, 'foto-projeto');
+        imageUrl = await uploadFile(selectedFile, 'foto-projeto-dpbarros');
       }
 
       const data = {
