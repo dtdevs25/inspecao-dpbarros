@@ -603,18 +603,19 @@ export class TechnicalVisitService {
         const boxHeight = mmToPt(65);
         pg.drawRectangle({ x: mx, y: cy-boxHeight, width: tw, height: boxHeight, borderColor: blk, borderWidth: 0.5 });
         
+        // Draw full-width lines inside the box always to match model
+        let lineY = cy - mmToPt(5.5);
+        while (lineY > cy - boxHeight) {
+            this.drawLine(pg, mx, lineY, mx + tw, lineY, rgb(0.4, 0.4, 0.4), 0.5);
+            lineY -= mmToPt(5.5);
+        }
+
         if (visit.finalNotes) {
-            let ny = cy - mmToPt(6);
+            let ny = cy - mmToPt(5.5); // align with lines
             for (const line of String(visit.finalNotes).split('\n')) {
-                ny = this.drawTextWrapped(pg, line, mx+mmToPt(2), ny, { font: fontRegular, size: 9, maxWidth: tw - mmToPt(4) });
+                // drawTextWrapped returns the next Y position. We use a slightly smaller line height to fit the 5.5mm lines if possible, or just let it wrap.
+                ny = this.drawTextWrapped(pg, line, mx+mmToPt(2), ny + mmToPt(1.5), { font: fontRegular, size: 9, maxWidth: tw - mmToPt(4), lineHeight: mmToPt(5.5) }) - mmToPt(1.5);
                 if (ny < cy - boxHeight + mmToPt(4)) break;
-            }
-        } else {
-            // Draw full-width lines inside the box if empty to match model
-            let lineY = cy - mmToPt(5.5);
-            while (lineY > cy - boxHeight) {
-                this.drawLine(pg, mx, lineY, mx + tw, lineY, rgb(0.4, 0.4, 0.4), 0.5);
-                lineY -= mmToPt(5.5);
             }
         }
         

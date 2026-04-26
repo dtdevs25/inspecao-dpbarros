@@ -382,40 +382,70 @@ export default function TechnicalVisits() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Visitas Técnicas (Relatório Fotográfico)</h1>
-        <button onClick={openCreate} className="bg-[#27AE60] hover:bg-[#219150] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-green-100 transition-all active:scale-95">
-          <Plus className="w-5 h-5" /> Nova Visita
+      {/* Header */}
+      <div className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between border border-gray-100">
+        <h1 className="text-xl font-black text-[#1B4B66] tracking-tight uppercase">VISITAS TÉCNICAS</h1>
+        <button onClick={openCreate} className="bg-[#27AE60] hover:bg-[#219150] text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 text-sm">
+          <Plus className="h-4 w-4" /> Nova Visita Técnica
         </button>
       </div>
-      {visits.length === 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400">
-          <p className="text-lg font-bold mb-2">Nenhuma visita tecnica registrada</p>
-          <p className="text-sm">Clique em "Nova Visita" para comecar.</p>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+        <div className="bg-[#27AE60] p-4 text-white font-bold flex items-center justify-center gap-2">
+          <span>Visitas Técnicas (Total: {visits.length})</span>
         </div>
-      )}
-      <div className="space-y-4">
-        {visits.map(v => (
-          <div key={v.id} className="group bg-white rounded-2xl border border-gray-100 p-6 flex items-center justify-between shadow-sm hover:shadow-xl hover:border-[#27AE60]/20 transition-all duration-300">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-green-50 flex flex-col items-center justify-center text-[#27AE60] border border-green-100 group-hover:scale-110 transition-transform">
-                <Calendar className="w-6 h-6 mb-0.5" />
-                <span className="text-[10px] font-black uppercase">{new Date(v.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')}</span>
-              </div>
-              <div className="space-y-1">
-                <p className="font-black text-gray-800 text-lg group-hover:text-[#27AE60] transition-colors">{v.unitName}</p>
-                <div className="flex items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-widest">
-                  <span className="bg-gray-100 px-2 py-0.5 rounded-lg">{v.companyName}</span>
-                  <span className="flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5" /> {v.inspectionIds?.length || 0} Apontamentos</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => openEdit(v)} className="p-3 text-gray-400 hover:text-[#27AE60] hover:bg-green-50 rounded-2xl transition-all" title="Editar"><Edit2 className="w-6 h-6" /></button>
-              <button onClick={() => downloadPDF(v.id)} className="p-3 text-white bg-[#27AE60] hover:bg-[#219150] rounded-2xl shadow-lg shadow-green-100 transition-all active:scale-95" title="Baixar PDF"><Download className="w-6 h-6" /></button>
-            </div>
-          </div>
-        ))}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-white border-b-2 border-green-500">
+                <th className="py-3 px-3 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Nº</th>
+                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Empresa</th>
+                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Unidade</th>
+                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Data</th>
+                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Apontamentos</th>
+                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Registrado Por</th>
+                <th className="py-3 px-3 text-center text-xs font-bold text-[#27AE60] uppercase tracking-wider">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {visits.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-gray-400 font-medium">
+                    Nenhuma visita técnica registrada.
+                  </td>
+                </tr>
+              ) : (
+                visits.map(v => (
+                  <tr key={v.id} className="hover:bg-green-50/30 transition-colors">
+                    <td className="py-3 px-3 text-sm font-black text-gray-700">#{v.id.substring(0,6).toUpperCase()}</td>
+                    <td className="py-3 px-4 text-sm font-bold text-gray-800">{v.companyName || '-'}</td>
+                    <td className="py-3 px-4 text-sm font-bold text-[#27AE60]">{v.unitName || '-'}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600 font-medium">
+                      {new Date(v.date).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600">
+                      <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-bold text-xs">
+                        {v.inspectionIds?.length || 0}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-xs font-bold text-gray-500 uppercase">{v.registeredBy || '-'}</td>
+                    <td className="py-3 px-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => openEdit(v)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar">
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => downloadPDF(v.id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Baixar PDF">
+                          <Download className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
