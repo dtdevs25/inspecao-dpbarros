@@ -107,7 +107,7 @@ export class TechnicalVisitService {
         // Row 4: Values
         // Row 5+: Custom Responsibles
 
-        const headerH = mmToPt(48.5);
+        const headerH = mmToPt(54.5);
         page.drawRectangle({ x: marginX, y: currentY - headerH, width: tableW, height: headerH, borderColor: black, borderWidth: 1 });
 
         // Left Column (Logo) - Spans 2 rows
@@ -183,13 +183,15 @@ export class TechnicalVisitService {
             page.drawText(label, { x: marginX + mmToPt(2), y: currentY - mmToPt(5), size: 8, font: fontBold });
             page.drawText(value || 'Não informado', { x: marginX + labelColW + mmToPt(2), y: currentY - mmToPt(5), size: 8, font: fontRegular });
             currentY -= rowRespH;
-            if (currentY > mmToPt(297) - mmToPt(15) - headerH) {
+            // Prevent drawing a line exactly on top of the bottom border
+            if (currentY > mmToPt(297) - mmToPt(15) - headerH + 0.1) {
                 this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
             }
         };
 
         const unitDisplay = visit.unitName || '';
         drawRespRow(`Responsável da Obra ${unitDisplay}`, visit.engineerResponsible || '');
+        drawRespRow(`Responsável da Obra ${unitDisplay}`, visit.engineerResponsible || ''); // Duplicate intentionally per user's model
         drawRespRow(`Técnico em Seg. do Trabalho da Obra ${unitDisplay}`, visit.technicianResponsible || '');
 
         return mmToPt(297) - mmToPt(15) - headerH;
@@ -276,7 +278,8 @@ export class TechnicalVisitService {
         
         // Address/Company Table
         page.drawRectangle({ x: marginX, y: currentY - rowH, width: tableW, height: rowH, borderColor: rgb(0,0,0), borderWidth: 0.5 });
-        page.drawText(`Endereço: ${visit.unitAddress || visit.companyName || ''}`, { x: marginX + mmToPt(2), y: currentY - mmToPt(6), size: 10, font: fontRegular });
+        const addressText = `Endereço: ${visit.unitAddress || visit.companyName || ''}`;
+        drawCentered(addressText, marginX, tableW, currentY - mmToPt(6), fontRegular, 10);
         currentY -= rowH;
         
         currentY -= mmToPt(15);
