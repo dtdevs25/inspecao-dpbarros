@@ -363,16 +363,15 @@ export class TechnicalVisitService {
                     const img = await pdfDoc.embedJpg(imgBuf).catch(() => pdfDoc.embedPng(imgBuf));
                     const tableW = mmToPt(180);
                     const marginX = mmToPt(15);
-                    const maxWidth = tableW;
-                    const maxHeight = mmToPt(110);
-                    const dims = img.scaleToFit(maxWidth, maxHeight);
+                    const newWidth = tableW;
+                    const newHeight = (img.height / img.width) * newWidth;
                     page.drawImage(img, {
-                        x: marginX + (maxWidth - dims.width) / 2,
-                        y: currentY - dims.height - mmToPt(5),
-                        width: dims.width,
-                        height: dims.height
+                        x: marginX,
+                        y: currentY - newHeight - mmToPt(5),
+                        width: newWidth,
+                        height: newHeight
                     });
-                    currentY -= (dims.height + mmToPt(10));
+                    currentY -= (newHeight + mmToPt(10));
                 }
             } catch (e) {
                 console.error('Error embedding inspection image:', e);
@@ -495,71 +494,83 @@ export class TechnicalVisitService {
         const mx = mmToPt(15);
         const tw = mmToPt(180);
         const rh = mmToPt(6.5);
-        const cCx  = mx + tw - mmToPt(28);
-        const cNCx = mx + tw - mmToPt(18);
-        const cNAx = mx + tw - mmToPt(8);
         const blk = rgb(0,0,0);
-        const grn = rgb(0.09,0.62,0.32);
-        const red = rgb(0.78,0.08,0.08);
-        const blu = rgb(0.1,0.1,0.6);
-        const lgray = rgb(0.88,0.88,0.88);
+        
+        const col1W = mmToPt(150);
+        const col2W = mmToPt(10);
+        const col3W = mmToPt(10);
+        const col4W = mmToPt(10);
 
         let pg = pdfDoc.addPage([mmToPt(210), mmToPt(297)]);
         let cy = await this.drawHeader(pg, visit, pdfDoc, fontBold, fontRegular, pageNumber, totalPages, 'Checklist NRs');
         let pn = pageNumber + 1;
 
-        cy -= mmToPt(5);
-        pg.drawText(`No. de Funcionarios: ${visit.numberOfEmployees || '-'}`, { x: mx, y: cy, size: 10, font: fontBold, color: blk });
-        cy -= mmToPt(5);
-        pg.drawText('Legenda: C=Conforme  NC=Nao Conforme  NA=Nao se Aplica', { x: mx, y: cy, size: 8.5, font: fontRegular, color: blk });
-        cy -= mmToPt(4);
-        this.drawLine(pg, mx, cy, mx+tw, cy, blk, 0.8);
-        cy -= mmToPt(1);
-
-        const hdr = (p: PDFPage, y: number) => {
-            p.drawText('C',  { x: cCx+mmToPt(1.5), y: y-mmToPt(5), size: 8, font: fontBold, color: blk });
-            p.drawText('NC', { x: cNCx-mmToPt(1),  y: y-mmToPt(5), size: 8, font: fontBold, color: blk });
-            p.drawText('NA', { x: cNAx-mmToPt(1),  y: y-mmToPt(5), size: 8, font: fontBold, color: blk });
+        const drawCentered = (p: PDFPage, txt: string, x: number, w: number, y: number, f: PDFFont, s: number) => {
+            p.drawText(txt, { x: x + (w - f.widthOfTextAtSize(txt, s))/2, y, font: f, size: s, color: blk });
         };
-        hdr(pg, cy); cy -= mmToPt(7);
-        this.drawLine(pg, mx, cy, mx+tw, cy, blk, 0.5);
+
+        cy -= mmToPt(5);
+        
+        // Grid Top Header
+        const hr1 = mmToPt(8);
+        pg.drawRectangle({ x: mx, y: cy-hr1, width: tw, height: hr1, borderColor: blk, borderWidth: 0.5 });
+        this.drawLine(pg, mx+mmToPt(120), cy, mx+mmToPt(120), cy-hr1, blk, 0.5);
+        drawCentered(pg, 'Nº de Funcionários:', mx, mmToPt(120), cy-mmToPt(5.5), fontBold, 10);
+        drawCentered(pg, String(visit.numberOfEmployees || '-'), mx+mmToPt(120), mmToPt(60), cy-mmToPt(5.5), fontBold, 10);
+        cy -= hr1;
+
+        const hr2 = mmToPt(8);
+        pg.drawRectangle({ x: mx, y: cy-hr2, width: tw, height: hr2, borderColor: blk, borderWidth: 0.5 });
+        this.drawLine(pg, mx+mmToPt(60), cy, mx+mmToPt(60), cy-hr2, blk, 0.5);
+        this.drawLine(pg, mx+mmToPt(120), cy, mx+mmToPt(120), cy-hr2, blk, 0.5);
+        drawCentered(pg, 'Legenda: C: Conforme', mx, mmToPt(60), cy-mmToPt(5.5), fontBold, 10);
+        drawCentered(pg, 'NC: Não Conforme', mx+mmToPt(60), mmToPt(60), cy-mmToPt(5.5), fontBold, 10);
+        drawCentered(pg, 'NA: Não se Aplicado', mx+mmToPt(120), mmToPt(60), cy-mmToPt(5.5), fontBold, 10);
+        cy -= hr2;
 
         const ensure = async () => {
             if (cy < mmToPt(22)) {
                 pg = pdfDoc.addPage([mmToPt(210), mmToPt(297)]);
                 cy = await this.drawHeader(pg, visit, pdfDoc, fontBold, fontRegular, pn++, totalPages, 'Checklist NRs');
-                cy -= mmToPt(4); hdr(pg, cy); cy -= mmToPt(7);
-                this.drawLine(pg, mx, cy, mx+tw, cy, blk, 0.5);
+                cy -= mmToPt(5);
             }
         };
 
-        let ri = 0;
         for (const cat of CATS) {
             await ensure();
-            pg.drawRectangle({ x: mx, y: cy-rh+mmToPt(1.2), width: tw, height: rh, color: rgb(0.15,0.15,0.15) });
-            pg.drawText(`${cat.id}  ${cat.t}`, { x: mx+mmToPt(2), y: cy-mmToPt(5), size: 8, font: fontBold, color: rgb(1,1,1) });
+            // Category Header Row
+            pg.drawRectangle({ x: mx, y: cy-rh, width: tw, height: rh, borderColor: blk, borderWidth: 0.5 });
+            this.drawLine(pg, mx+col1W, cy, mx+col1W, cy-rh, blk, 0.5);
+            this.drawLine(pg, mx+col1W+col2W, cy, mx+col1W+col2W, cy-rh, blk, 0.5);
+            this.drawLine(pg, mx+col1W+col2W+col3W, cy, mx+col1W+col2W+col3W, cy-rh, blk, 0.5);
+
+            pg.drawText(`${cat.id} ${cat.t}`, { x: mx+mmToPt(2), y: cy-mmToPt(4.5), size: 9, font: fontBold, color: blk });
+            drawCentered(pg, 'C', mx+col1W, col2W, cy-mmToPt(4.5), fontBold, 9);
+            drawCentered(pg, 'NC', mx+col1W+col2W, col3W, cy-mmToPt(4.5), fontBold, 9);
+            drawCentered(pg, 'NA', mx+col1W+col2W+col3W, col4W, cy-mmToPt(4.5), fontBold, 9);
             cy -= rh;
+
             for (const id of cat.i) {
                 await ensure();
-                const bg = ri%2===0 ? rgb(0.97,0.97,0.97) : rgb(1,1,1);
-                pg.drawRectangle({ x: mx, y: cy-rh+mmToPt(1.2), width: tw, height: rh, color: bg });
                 
-                // Vertical lines for the checklist row
-                this.drawLine(pg, mx, cy+mmToPt(1.2), mx, cy-rh+mmToPt(1.2), blk, 0.5);
-                this.drawLine(pg, mx+tw, cy+mmToPt(1.2), mx+tw, cy-rh+mmToPt(1.2), blk, 0.5);
-                this.drawLine(pg, cCx-mmToPt(2), cy+mmToPt(1.2), cCx-mmToPt(2), cy-rh+mmToPt(1.2), rgb(0.7,0.7,0.7), 0.5);
+                // Item Row
+                pg.drawRectangle({ x: mx, y: cy-rh, width: tw, height: rh, borderColor: blk, borderWidth: 0.5 });
+                this.drawLine(pg, mx+col1W, cy, mx+col1W, cy-rh, blk, 0.5);
+                this.drawLine(pg, mx+col1W+col2W, cy, mx+col1W+col2W, cy-rh, blk, 0.5);
+                this.drawLine(pg, mx+col1W+col2W+col3W, cy, mx+col1W+col2W+col3W, cy-rh, blk, 0.5);
 
-                pg.drawText(`${id}  ${(TEXTS[id]||'').substring(0,88)}`, { x: mx+mmToPt(2), y: cy-mmToPt(5), size: 7.5, font: fontRegular, color: blk });
+                const itemText = `${id} ${(TEXTS[id]||'').substring(0,95)}`;
+                pg.drawText(itemText, { x: mx+mmToPt(2), y: cy-mmToPt(4.5), size: 9, font: fontRegular, color: blk });
+                
                 const a = answers[id]||'C';
-                const by = cy-rh+mmToPt(2); const bh = mmToPt(4); const bw = mmToPt(6);
-                pg.drawRectangle({ x: cCx,         y: by, width: bw,        height: bh, color: a==='C'  ? grn : lgray });
-                pg.drawRectangle({ x: cNCx-mmToPt(1), y: by, width: bw+mmToPt(1), height: bh, color: a==='NC' ? red : lgray });
-                pg.drawRectangle({ x: cNAx-mmToPt(1), y: by, width: bw+mmToPt(1), height: bh, color: a==='NA' ? blu : lgray });
-                if (a==='C')  pg.drawText('C',  { x: cCx+mmToPt(1.5),  y: by+mmToPt(0.8), size: 7, font: fontBold, color: rgb(1,1,1) });
-                if (a==='NC') pg.drawText('NC', { x: cNCx-mmToPt(0.5), y: by+mmToPt(0.8), size: 7, font: fontBold, color: rgb(1,1,1) });
-                if (a==='NA') pg.drawText('NA', { x: cNAx-mmToPt(0.5), y: by+mmToPt(0.8), size: 7, font: fontBold, color: rgb(1,1,1) });
-                this.drawLine(pg, mx, cy-rh+mmToPt(1.2), mx+tw, cy-rh+mmToPt(1.2), blk, 0.5);
-                cy -= rh; ri++;
+                if (a === 'C') {
+                    drawCentered(pg, 'X', mx+col1W, col2W, cy-mmToPt(4.5), fontBold, 9);
+                } else if (a === 'NC') {
+                    drawCentered(pg, 'X', mx+col1W+col2W, col3W, cy-mmToPt(4.5), fontBold, 9);
+                } else if (a === 'NA') {
+                    drawCentered(pg, 'X', mx+col1W+col2W+col3W, col4W, cy-mmToPt(4.5), fontBold, 9);
+                }
+                cy -= rh;
             }
         }
 
