@@ -99,69 +99,104 @@ export class TechnicalVisitService {
         const black = rgb(0,0,0);
         const tableW = mmToPt(180);
 
-        // Draw Outer Box for Header
-        const headerH = mmToPt(45);
+        // Header Table Grid (based on model image)
+        // Row 1 & 2 Left: Logo (Spans both)
+        // Row 1 Middle: VISITA TECNICA
+        // Row 2 Middle: Relatorio Fotografico | Right: Pagina X de Y
+        // Row 3: Headers (Data, Responsavel, Revisao)
+        // Row 4: Values
+        // Row 5+: Custom Responsibles
+
+        const headerH = mmToPt(55);
         page.drawRectangle({ x: marginX, y: currentY - headerH, width: tableW, height: headerH, borderColor: black, borderWidth: 1 });
 
-        // Logo Section
+        // Left Column (Logo) - Spans 2 rows
+        const colLogoW = mmToPt(45);
+        this.drawLine(page, marginX + colLogoW, currentY, marginX + colLogoW, currentY - mmToPt(20));
+        
         const logoBuf = await this.getLocalImageBuffer('sesmt.png');
         if (logoBuf) {
             try {
                 const logo = await pdfDoc.embedPng(logoBuf);
-                page.drawImage(logo, { x: marginX + mmToPt(2), y: currentY - mmToPt(12), width: mmToPt(40), height: mmToPt(10) });
+                const lH = mmToPt(14);
+                const lW = mmToPt(30);
+                page.drawImage(logo, { x: marginX + (colLogoW - lW)/2, y: currentY - mmToPt(17), width: lW, height: lH });
             } catch (e) { }
         }
 
-        // Title Section (Middle)
-        this.drawLine(page, marginX + mmToPt(45), currentY, marginX + mmToPt(45), currentY - mmToPt(15));
-        page.drawText('VISITA TÉCNICA', { x: marginX + mmToPt(50), y: currentY - mmToPt(6), size: 12, font: fontBold });
-        page.drawText(subtitle.toUpperCase(), { x: marginX + mmToPt(50), y: currentY - mmToPt(12), size: 10, font: fontBold });
+        // Row 1: VISITA TÉCNICA
+        const row1H = mmToPt(8);
+        page.drawText('VISITA TÉCNICA', { 
+            x: marginX + colLogoW + (tableW - colLogoW)/2 - (fontBold.widthOfTextAtSize('VISITA TÉCNICA', 12)/2), 
+            y: currentY - mmToPt(6), size: 12, font: fontBold 
+        });
+        currentY -= row1H;
+        this.drawLine(page, marginX + colLogoW, currentY, marginX + tableW, currentY);
 
-        // Page Number Section (Right)
-        this.drawLine(page, marginX + tableW - mmToPt(35), currentY, marginX + tableW - mmToPt(35), currentY - mmToPt(15));
-        page.drawText(`Página ${pageNumber} de ${totalPages}`, { x: marginX + tableW - mmToPt(33), y: currentY - mmToPt(10), size: 10, font: fontRegular });
-
-        // Horizontal Line below first row
-        currentY -= mmToPt(15);
+        // Row 2: Subtitle | Page
+        const row2H = mmToPt(12);
+        const colPageW = mmToPt(35);
+        this.drawLine(page, marginX + tableW - colPageW, currentY, marginX + tableW - colPageW, currentY - row2H);
+        
+        page.drawText(subtitle.toUpperCase(), { 
+            x: marginX + colLogoW + (tableW - colLogoW - colPageW)/2 - (fontBold.widthOfTextAtSize(subtitle.toUpperCase(), 11)/2), 
+            y: currentY - mmToPt(8), size: 11, font: fontBold 
+        });
+        page.drawText(`Página ${pageNumber} de ${totalPages}`, { 
+            x: marginX + tableW - colPageW + mmToPt(2), 
+            y: currentY - mmToPt(8), size: 9, font: fontRegular 
+        });
+        currentY -= row2H;
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
 
-        // Second Row: Date, Emitted By, Revision
-        const col1X = marginX + mmToPt(2);
-        const col2X = marginX + mmToPt(60);
-        const col3X = marginX + mmToPt(140);
-        this.drawLine(page, col2X - mmToPt(2), currentY, col2X - mmToPt(2), currentY - mmToPt(12));
-        this.drawLine(page, col3X - mmToPt(2), currentY, col3X - mmToPt(2), currentY - mmToPt(12));
+        // Row 3: Headers
+        const row3H = mmToPt(7);
+        const col1W = mmToPt(45);
+        const col3W = mmToPt(35);
+        const col2W = tableW - col1W - col3W;
+        this.drawLine(page, marginX + col1W, currentY, marginX + col1W, currentY - row3H);
+        this.drawLine(page, marginX + col1W + col2W, currentY, marginX + col1W + col2W, currentY - row3H);
 
-        page.drawText('Data de Emissão', { x: col1X, y: currentY - mmToPt(4), size: 8, font: fontBold });
-        page.drawText('Emissor', { x: col2X, y: currentY - mmToPt(4), size: 8, font: fontBold });
-        page.drawText('Revisão', { x: col3X, y: currentY - mmToPt(4), size: 8, font: fontBold });
+        const drawCentered = (txt: string, x: number, w: number, y: number, f: PDFFont, s: number) => {
+            page.drawText(txt, { x: x + (w - f.widthOfTextAtSize(txt, s))/2, y, font: f, size: s });
+        };
 
+        drawCentered('Data de Emissão', marginX, col1W, currentY - mmToPt(5), fontBold, 9);
+        drawCentered('Responsável', marginX + col1W, col2W, currentY - mmToPt(5), fontBold, 9);
+        drawCentered('Revisão', marginX + col1W + col2W, col3W, currentY - mmToPt(5), fontBold, 9);
+        currentY -= row3H;
+        this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
+
+        // Row 4: Values
+        const row4H = mmToPt(8);
+        this.drawLine(page, marginX + col1W, currentY, marginX + col1W, currentY - row4H);
+        this.drawLine(page, marginX + col1W + col2W, currentY, marginX + col1W + col2W, currentY - row4H);
         const dateStr = visit.date ? new Date(visit.date).toLocaleDateString('pt-BR') : '';
-        page.drawText(dateStr, { x: col1X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
-        page.drawText(visit.registeredBy || '', { x: col2X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
-        page.drawText('03', { x: col3X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
-
-        // Horizontal Line below second row
-        currentY -= mmToPt(12);
+        drawCentered(dateStr, marginX, col1W, currentY - mmToPt(6), fontRegular, 9);
+        drawCentered(visit.registeredBy || '', marginX + col1W, col2W, currentY - mmToPt(6), fontRegular, 9);
+        drawCentered('03', marginX + col1W + col2W, col3W, currentY - mmToPt(6), fontRegular, 9);
+        currentY -= row4H;
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
 
-        // Third Row: Responsible Persons
-        page.drawText('Engenheiro(s) Responsável(eis)', { x: col1X, y: currentY - mmToPt(4), size: 8, font: fontBold });
-        page.drawText(visit.engineerResponsible || 'Não informado', { x: col1X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
+        // Row 5, 6, 7: Custom Responsibles (Engineers and Safety Tech)
+        const rowRespH = mmToPt(6.5);
+        const labelColW = mmToPt(85);
+        
+        const drawRespRow = (label: string, value: string) => {
+            this.drawLine(page, marginX + labelColW, currentY, marginX + labelColW, currentY - rowRespH);
+            page.drawText(label, { x: marginX + mmToPt(2), y: currentY - mmToPt(5), size: 8, font: fontBold });
+            page.drawText(value || 'Não informado', { x: marginX + labelColW + mmToPt(2), y: currentY - mmToPt(5), size: 8, font: fontRegular });
+            currentY -= rowRespH;
+            if (currentY > mmToPt(297) - mmToPt(15) - headerH) {
+                this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
+            }
+        };
 
-        this.drawLine(page, col2X - mmToPt(2), currentY, col2X - mmToPt(2), currentY - mmToPt(12));
-        page.drawText('Técnico(s) de Seg. Responsável(eis)', { x: col2X, y: currentY - mmToPt(4), size: 8, font: fontBold });
-        page.drawText(visit.technicianResponsible || 'Não informado', { x: col2X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
+        drawRespRow(`Responsável da Obra ${visit.unitName?.split('-')[0]?.trim() || ''}`, visit.engineerResponsible || '');
+        drawRespRow(`Responsável da Obra ${visit.unitName?.split('-')[0]?.trim() || ''}`, visit.engineerResponsible || ''); // Repeat as per model or leave empty
+        drawRespRow(`Técnico em Seg. do Trabalho da Obra ${visit.unitName?.split('-')[0]?.trim() || ''}`, visit.technicianResponsible || '');
 
-        // Horizontal Line below third row
-        currentY -= mmToPt(12);
-        this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
-
-        // Fourth Row: Unit/Company
-        page.drawText('Unidade / Obra', { x: col1X, y: currentY - mmToPt(4), size: 8, font: fontBold });
-        page.drawText(`${visit.unitName || ''} - ${visit.companyName || ''}`, { x: col1X, y: currentY - mmToPt(10), size: 9, font: fontRegular });
-
-        return currentY - mmToPt(12);
+        return mmToPt(297) - mmToPt(15) - headerH;
     }
 
     public static async generateReport(visit: any, prisma: any): Promise<Buffer> {
