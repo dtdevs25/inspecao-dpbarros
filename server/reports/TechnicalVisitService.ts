@@ -363,15 +363,16 @@ export class TechnicalVisitService {
                     const img = await pdfDoc.embedJpg(imgBuf).catch(() => pdfDoc.embedPng(imgBuf));
                     const tableW = mmToPt(180);
                     const marginX = mmToPt(15);
-                    const newWidth = tableW;
-                    const newHeight = (img.height / img.width) * newWidth;
+                    const maxWidth = tableW;
+                    const maxHeight = mmToPt(110);
+                    const dims = img.scaleToFit(maxWidth, maxHeight);
                     page.drawImage(img, {
-                        x: marginX,
-                        y: currentY - newHeight - mmToPt(5),
-                        width: newWidth,
-                        height: newHeight
+                        x: marginX + (maxWidth - dims.width) / 2,
+                        y: currentY - dims.height - mmToPt(5),
+                        width: dims.width,
+                        height: dims.height
                     });
-                    currentY -= (newHeight + mmToPt(10));
+                    currentY -= (dims.height + mmToPt(10));
                 }
             } catch (e) {
                 console.error('Error embedding inspection image:', e);
@@ -382,8 +383,6 @@ export class TechnicalVisitService {
             page.drawText('(Sem foto de evidência)', { x: mmToPt(90), y: currentY - mmToPt(50), size: 12, font: fontRegular });
             currentY -= mmToPt(60);
         }
-
-        currentY -= mmToPt(10);
 
         // TABLE: CONFORMIDADE / AÇÃO CORRETIVA
         const tableW = mmToPt(180);
