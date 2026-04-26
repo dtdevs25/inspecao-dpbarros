@@ -227,13 +227,29 @@ export class TechnicalVisitService {
         const page = pdfDoc.addPage([mmToPt(210), mmToPt(297)]);
         let currentY = await this.drawHeader(page, visit, pdfDoc, fontBold, fontRegular, pageNumber, totalPages, 'Relatório Fotográfico');
         
-        currentY -= mmToPt(15);
-        page.drawText(`Obra: ${visit.unitName || 'Não Informada'}`, { x: mmToPt(15), y: currentY, size: 12, font: fontBold });
-        currentY -= mmToPt(8);
-        page.drawText(`Empresa: ${visit.companyName || ''}`, { x: mmToPt(15), y: currentY, size: 11, font: fontRegular });
+        currentY -= mmToPt(10);
+        const marginX = mmToPt(15);
+        const tableW = mmToPt(180);
+        const rowH = mmToPt(8);
+        const drawCentered = (txt: string, x: number, w: number, y: number, f: PDFFont, s: number) => {
+            page.drawText(txt, { x: x + (w - f.widthOfTextAtSize(txt, s))/2, y, font: f, size: s });
+        };
+
+        const obraName = visit.unitName || 'Não Informada';
+        
+        // Obra Name Table
+        page.drawRectangle({ x: marginX, y: currentY - rowH, width: tableW, height: rowH, borderColor: rgb(0,0,0), borderWidth: 0.5 });
+        drawCentered(obraName, marginX, tableW, currentY - mmToPt(6), fontBold, 10);
+        currentY -= rowH;
+        
+        // Address/Company Table
+        page.drawRectangle({ x: marginX, y: currentY - rowH, width: tableW, height: rowH, borderColor: rgb(0,0,0), borderWidth: 0.5 });
+        page.drawText(`Endereço: ${visit.companyName || ''}`, { x: marginX + mmToPt(2), y: currentY - mmToPt(6), size: 10, font: fontRegular });
+        currentY -= rowH;
         
         currentY -= mmToPt(15);
-        page.drawText('Registro Fotográfico', { x: mmToPt(85), y: currentY, size: 16, font: fontBold });
+        drawCentered('Registro Fotográfico', marginX, tableW, currentY, fontBold, 14);
+        currentY -= mmToPt(10);
 
         if (visit.photoUrl) {
             try {
@@ -241,20 +257,27 @@ export class TechnicalVisitService {
                 const imgBuf = await this.getRemoteImageBuffer(imgUrl);
                 if (imgBuf) {
                     const img = await pdfDoc.embedJpg(imgBuf).catch(() => pdfDoc.embedPng(imgBuf));
-                    const maxWidth = mmToPt(140);
-                    const maxHeight = mmToPt(100);
-                    const dims = img.scaleToFit(maxWidth, maxHeight);
+                    const newWidth = tableW;
+                    const newHeight = (img.height / img.width) * newWidth;
                     page.drawImage(img, {
-                        x: mmToPt(105) - dims.width / 2,
-                        y: currentY - mmToPt(120),
-                        width: dims.width,
-                        height: dims.height
+                        x: marginX,
+                        y: currentY - newHeight,
+                        width: newWidth,
+                        height: newHeight
                     });
+                    currentY -= (newHeight + mmToPt(8));
+                } else {
+                    currentY -= mmToPt(50);
                 }
             } catch (e) {
-                page.drawText('(Falha ao carregar foto da fachada)', { x: mmToPt(15), y: currentY - mmToPt(100), size: 12, font: fontRegular });
+                page.drawText('(Falha ao carregar foto da fachada)', { x: marginX, y: currentY - mmToPt(50), size: 12, font: fontRegular });
+                currentY -= mmToPt(60);
             }
+        } else {
+             currentY -= mmToPt(50);
         }
+
+        drawCentered(`Foto de Entrada da obra ${obraName}`, marginX, tableW, currentY, fontRegular, 10);
     }
 
     private static async createDocumentationPage(pdfDoc: PDFDocument, visit: any, fontBold: PDFFont, fontRegular: PDFFont, pageNumber: number, totalPages: number) {
