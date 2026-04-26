@@ -345,20 +345,15 @@ export default function TechnicalVisits() {
                   value={form.finalNotes} onChange={e => setForm({ ...form, finalNotes: e.target.value })} />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+              <div className="mt-4 max-w-sm">
                 <SignaturePad 
-                  label="Assinatura do Técnico SESMT"
+                  label="Assinatura do Inspetor (SESMT Central)"
                   initialSignature={form.technicianSignature}
                   onSignatureChange={(url) => setForm({ ...form, technicianSignature: url })}
                 />
-                <SignaturePad 
-                  label="Assinatura do Engenheiro/Responsável"
-                  initialSignature={form.engineerSignature}
-                  onSignatureChange={(url) => setForm({ ...form, engineerSignature: url })}
-                />
               </div>
               
-              <p className="text-xs text-gray-400 italic">As assinaturas desenhadas acima serão impressas no final do relatório em PDF.</p>
+              <p className="text-xs text-gray-400 italic">A assinatura desenhada acima será impressa no final do relatório em PDF centralizada (SESMT CENTRAL).</p>
             </div>
           )}
 

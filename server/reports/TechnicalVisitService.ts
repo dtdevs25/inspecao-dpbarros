@@ -587,80 +587,54 @@ export class TechnicalVisitService {
         // Draw the blue header for notes
         const blueColor = rgb(0.12, 0.22, 0.45); // Dark blue matching header
         pg.drawRectangle({ x: mx, y: cy-mmToPt(8), width: tw, height: mmToPt(8), color: blueColor });
-        pg.drawText('NÃO CONFORMIDADE E/OU RECOMENDAÇÕES', { x: mx + mmToPt(2), y: cy - mmToPt(5.5), size: 9, font: fontBold, color: rgb(1,1,1) });
-        pg.drawText('PRAZO PARA REGULARIZAÇÃO', { x: mx + tw - mmToPt(65), y: cy - mmToPt(5.5), size: 9, font: fontBold, color: rgb(1,1,1) });
+        
+        // Centered Text: NÃO CONFORMIDADE E/OU RECOMENDAÇÕES PRAZO PARA REGULARIZAÇÃO
+        const headerText = 'NÃO CONFORMIDADE E/OU RECOMENDAÇÕES PRAZO PARA REGULARIZAÇÃO';
+        const textWidth = fontBold.widthOfTextAtSize(headerText, 9);
+        const textX = mx + (tw - textWidth) / 2;
+        pg.drawText(headerText, { x: textX, y: cy - mmToPt(5.5), size: 9, font: fontBold, color: rgb(1,1,1) });
+        // Underline "NÃO"
+        const naoWidth = fontBold.widthOfTextAtSize('NÃO', 9);
+        this.drawLine(pg, textX, cy - mmToPt(6.5), textX + naoWidth, cy - mmToPt(6.5), rgb(1,1,1), 0.5);
+
         cy -= mmToPt(8);
         
         // Notes Box
         const boxHeight = mmToPt(65);
         pg.drawRectangle({ x: mx, y: cy-boxHeight, width: tw, height: boxHeight, borderColor: blk, borderWidth: 0.5 });
         
-        // Split for Prazo column (x = mx + tw - mmToPt(70))
-        this.drawLine(pg, mx + tw - mmToPt(70), cy, mx + tw - mmToPt(70), cy - boxHeight, blk, 0.5);
-
         if (visit.finalNotes) {
             let ny = cy - mmToPt(6);
             for (const line of String(visit.finalNotes).split('\n')) {
-                ny = this.drawTextWrapped(pg, line, mx+mmToPt(2), ny, { font: fontRegular, size: 9, maxWidth: tw - mmToPt(74) });
+                ny = this.drawTextWrapped(pg, line, mx+mmToPt(2), ny, { font: fontRegular, size: 9, maxWidth: tw - mmToPt(4) });
                 if (ny < cy - boxHeight + mmToPt(4)) break;
             }
         } else {
-            // Draw lines inside the box if empty to match model
-            let lineY = cy - mmToPt(8);
-            while (lineY > cy - boxHeight + mmToPt(5)) {
-                this.drawLine(pg, mx, lineY, mx + tw - mmToPt(70), lineY, rgb(0.8,0.8,0.8), 0.5);
-                lineY -= mmToPt(8);
+            // Draw full-width lines inside the box if empty to match model
+            let lineY = cy - mmToPt(5.5);
+            while (lineY > cy - boxHeight) {
+                this.drawLine(pg, mx, lineY, mx + tw, lineY, rgb(0.4, 0.4, 0.4), 0.5);
+                lineY -= mmToPt(5.5);
             }
         }
         
-        // Draw empty lines for the "Prazo" column
-        let prazoY = cy - mmToPt(15);
-        while (prazoY > cy - boxHeight + mmToPt(5)) {
-            pg.drawText('___/___/___', { x: mx + tw - mmToPt(50), y: prazoY, size: 9, font: fontRegular, color: blk });
-            prazoY -= mmToPt(15);
-        }
-
         cy -= boxHeight;
         cy -= mmToPt(35);
         const sw = mmToPt(80);
+        const sigX = mx + (tw - sw) / 2; // Centered
         
-        // Draw Signatures Images (if any)
+        // Draw Signature Image (if any)
         try {
             if ((visit as any).technicianSignature) {
                 const imgBuf = await this.getRemoteImageBuffer((visit as any).technicianSignature);
                 const sigImg = await pdfDoc.embedPng(imgBuf).catch(() => pdfDoc.embedJpg(imgBuf));
                 const dims = sigImg.scaleToFit(sw, mmToPt(25));
-                pg.drawImage(sigImg, { x: mx + sw/2 - dims.width/2, y: cy + mmToPt(2), width: dims.width, height: dims.height });
+                pg.drawImage(sigImg, { x: sigX + sw/2 - dims.width/2, y: cy + mmToPt(2), width: dims.width, height: dims.height });
             }
-        } catch (e) { console.error('Erro ao baixar assinatura do tecnico', e); }
+        } catch (e) { console.error('Erro ao baixar assinatura', e); }
 
-        try {
-            if ((visit as any).engineerSignature) {
-                const imgBuf = await this.getRemoteImageBuffer((visit as any).engineerSignature);
-                const sigImg = await pdfDoc.embedPng(imgBuf).catch(() => pdfDoc.embedJpg(imgBuf));
-                const dims = sigImg.scaleToFit(sw, mmToPt(25));
-                pg.drawImage(sigImg, { x: mx + tw - sw/2 - dims.width/2, y: cy + mmToPt(2), width: dims.width, height: dims.height });
-            }
-        } catch (e) { console.error('Erro ao baixar assinatura do engenheiro', e); }
-
-        // Technician Signature
-        this.drawLine(pg, mx, cy, mx+sw, cy, blk, 0.5);
-        const techName = visit.technicianResponsible || '';
-        if (techName) {
-            drawCentered(pg, techName, mx, sw, cy-mmToPt(5), fontBold, 9);
-            drawCentered(pg, 'Técnico de Segurança do Trabalho', mx, sw, cy-mmToPt(9), fontRegular, 8);
-        } else {
-            drawCentered(pg, 'Técnico de Segurança do Trabalho', mx, sw, cy-mmToPt(5), fontRegular, 8);
-        }
-        
-        // Engineer Signature
-        this.drawLine(pg, mx+tw-sw, cy, mx+tw, cy, blk, 0.5);
-        const engName = visit.engineerResponsible || '';
-        if (engName) {
-            drawCentered(pg, engName, mx+tw-sw, sw, cy-mmToPt(5), fontBold, 9);
-            drawCentered(pg, 'Engenheiro / Encarregado Responsável', mx+tw-sw, sw, cy-mmToPt(9), fontRegular, 8);
-        } else {
-            drawCentered(pg, 'Engenheiro / Encarregado Responsável', mx+tw-sw, sw, cy-mmToPt(5), fontRegular, 8);
-        }
+        // Signature Line
+        this.drawLine(pg, sigX, cy, sigX + sw, cy, blk, 0.5);
+        drawCentered(pg, 'SESMT CENTRAL', sigX, sw, cy-mmToPt(5), fontBold, 10);
     }
 }
