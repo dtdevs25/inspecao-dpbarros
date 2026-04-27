@@ -37,6 +37,8 @@ model Company {
   reportEmails         String[]
   reportScheduleTime   String?  // "HH:MM" no horário de Brasília (BRT/UTC-3)
   reportScheduleDay    Int      @default(5) // 0=Domingo, 1=Segunda... 5=Sexta
+  visitExtraEmails     String[] // E-mails adicionais que recebem relatórios de visita técnica
+  visitSchedule        Json?    // [{day:0,enabled:false,time:""}, ...] Dom-Sáb
   createdAt            DateTime @default(now())
 }
 
@@ -275,6 +277,7 @@ model TechnicalVisit {
   technicianEmails      String?
   engineerSignature     String?
   technicianSignature   String?
+  visitEmailSentAt      String?  // Date (YYYY-MM-DD) of last automatic/manual email send
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

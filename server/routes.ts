@@ -48,6 +48,7 @@ const getFriendlyLabel = async (collection: string, id: string, record?: any): P
         'users': 'Usuário',
         'type_of_entries': 'Tipo de Entrada',
         'report_templates': 'Modelo de Relatório',
+        'technical_visits': 'Visita Técnica',
     };
     const label = collectionLabels[collection] || 'Registro';
 
@@ -80,6 +81,13 @@ const getFriendlyLabel = async (collection: string, id: string, record?: any): P
             console.error('Erro ao gerar label amigável:', err);
             return `${label}: ${id.substring(0, 8)}...`;
         }
+    }
+
+    // For technical_visits: show unit + date
+    if (collection === 'technical_visits' && record) {
+        const unitPart = record.unitName || '';
+        const datePart = record.date ? ` (${record.date})` : '';
+        return `Visita Técnica: ${unitPart}${datePart}`.trim() || `Visita Técnica: ${id.substring(0, 8)}...`;
     }
 
     return `${label}: ${id.substring(0, 8)}...`;
@@ -690,6 +698,75 @@ router.get('/reports/technical-visit/:id/pdf', authenticate, async (req: any, re
     } catch (e: any) {
         console.error("Erro ao gerar PDF da visita técnica:", e);
         res.status(500).json({ error: "Erro ao gerar PDF", details: e.message });
+    }
+});
+
+// --- SEND EMAIL FOR TECHNICAL VISIT REPORT ---
+router.post('/reports/technical-visit/:id/send-email', authenticate, async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const visit = await prisma.technicalVisit.findUnique({ where: { id } });
+        if (!visit) return res.status(404).json({ error: 'Visita técnica não encontrada' });
+
+        const company = visit.companyId ? await prisma.company.findUnique({ where: { id: visit.companyId } }) : null;
+        const recipients = new Map<string, null>();
+
+        const parseEmailField = (field: string | null | undefined) => {
+            if (!field) return;
+            try {
+                const arr = JSON.parse(field);
+                if (Array.isArray(arr)) arr.forEach((e: string) => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
+            } catch {
+                field.split(',').forEach(e => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
+            }
+        };
+
+        parseEmailField(visit.engineerEmails);
+        parseEmailField(visit.technicianEmails);
+        ((company as any)?.visitExtraEmails || []).forEach((e: string) => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
+
+        if (recipients.size === 0) {
+            return res.status(400).json({ error: 'Nenhum destinatário configurado. Adicione e-mails dos responsáveis na visita técnica ou nos E-mails nas Configurações.' });
+        }
+
+        const pdfBuffer = await TechnicalVisitService.generateReport(visit, prisma);
+        const unitSlug = (visit.unitName || '').replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `relatorio_visita_${unitSlug}_${visit.date || Date.now()}.pdf`;
+        const dateDisplay = visit.date ? visit.date.split('-').reverse().join('/') : '';
+        const inspCount = Array.isArray(visit.inspectionIds) ? visit.inspectionIds.length : 0;
+
+        let sent = 0;
+        for (const [emailAddr] of recipients.entries()) {
+            const html = `<div style="font-family:'Segoe UI',sans-serif;background:#f4f7f6;padding:40px 20px;text-align:center;">
+                <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                    <div style="border-bottom:3px solid #27AE60;padding:30px 20px;"><h1 style="color:#27AE60;margin:0;font-size:24px;">InspecPRO</h1>
+                    <p style="color:#555;margin:5px 0 0;font-weight:500;">Relatório de Visita Técnica</p></div>
+                    <div style="padding:40px 30px;text-align:left;">
+                        <p style="color:#555;font-size:16px;line-height:1.6;">Olá,</p>
+                        <p style="color:#555;font-size:16px;line-height:1.6;">Segue em anexo o Relatório de Visita Técnica realizada em <strong>${visit.unitName || ''}</strong>${dateDisplay ? ` no dia <strong>${dateDisplay}</strong>` : ''}.</p>
+                        <div style="background:#f0faf4;border-left:4px solid #27AE60;border-radius:4px;padding:16px;margin:16px 0;">
+                            <p style="margin:0;color:#333;font-size:14px;"><strong>Unidade:</strong> ${visit.unitName || '-'}</p>
+                            <p style="margin:6px 0 0;color:#333;font-size:14px;"><strong>Data:</strong> ${dateDisplay || '-'}</p>
+                            <p style="margin:6px 0 0;color:#333;font-size:14px;"><strong>Apontamentos:</strong> ${inspCount}</p>
+                        </div>
+                        <p style="color:#555;font-size:16px;">Atenciosamente,<br/><strong>Equipe de Segurança do Trabalho</strong></p>
+                        <div style="margin-top:30px;border-top:1px solid #eee;padding-top:16px;text-align:center;">
+                            <p style="color:#999;font-size:12px;margin:0;">⚠️ E-mail automático InspecPRO. Não responda esta mensagem.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            const ok = await sendEmail(emailAddr, `Relatório de Visita Técnica - ${visit.unitName || ''} (${dateDisplay})`, 'Relatório em anexo.', html, [{ filename: fileName, content: pdfBuffer, contentType: 'application/pdf' }]);
+            if (ok) sent++;
+        }
+
+        const todayStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).toISOString().split('T')[0];
+        await prisma.technicalVisit.update({ where: { id }, data: { visitEmailSentAt: todayStr } });
+        await logAction(req.user, 'EMAIL_SENT', 'technical_visits', `E-mail da Visita Técnica (${visit.unitName}) enviado para ${sent} destinatário(s).`);
+        res.json({ success: true, sent, total: recipients.size });
+    } catch (e: any) {
+        console.error('Erro ao enviar e-mail da visita técnica:', e);
+        res.status(500).json({ error: 'Erro ao enviar e-mail', details: e.message });
     }
 });
 

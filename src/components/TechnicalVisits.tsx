@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Download, Sparkles, Loader2, ChevronDown, ChevronUp, Users, Calendar, ClipboardList, Search, X, Tag, ImagePlus } from 'lucide-react';
+import { Plus, Edit2, Download, Mail, Sparkles, Loader2, ChevronDown, ChevronUp, Users, Calendar, ClipboardList, Search, X, Tag, ImagePlus } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from '../lib/dbBridge';
 const db = {} as any;
 import { useUser } from '../contexts/UserContext';
@@ -211,9 +211,31 @@ export default function TechnicalVisits() {
   const downloadPDF = (id: string) => {
     const apiUrl = (import.meta as any).env.VITE_API_URL || '';
     const token = localStorage.getItem('token') || '';
-    // Open directly via URL with token as query param - avoids Chrome blocking async click
     const url = `${apiUrl}/api/reports/technical-visit/${id}/pdf?token=${encodeURIComponent(token)}`;
     window.open(url, '_blank');
+  };
+
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const sendEmail = async (id: string) => {
+    if (sendingEmail) return;
+    setSendingEmail(id);
+    try {
+      const apiUrl = (import.meta as any).env.VITE_API_URL || '';
+      const res = await fetch(`${apiUrl}/api/reports/technical-visit/${id}/send-email`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ E-mail enviado com sucesso para ${data.sent} destinatário(s)!`);
+      } else {
+        alert(`❌ Erro: ${data.error || 'Falha ao enviar e-mail'}`);
+      }
+    } catch (e) {
+      alert('❌ Falha na conexão ao tentar enviar e-mail.');
+    } finally {
+      setSendingEmail(null);
+    }
   };
 
   const addTag = (field: 'engineerResponsible' | 'technicianResponsible', emailField: 'engineerEmails' | 'technicianEmails', nameValue: string, emailValue: string) => {
@@ -581,6 +603,14 @@ export default function TechnicalVisits() {
                         </button>
                         <button onClick={() => downloadPDF(v.id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Baixar PDF">
                           <Download className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => sendEmail(v.id)}
+                          disabled={sendingEmail === v.id}
+                          className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
+                          title="Enviar por E-mail"
+                        >
+                          {sendingEmail === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                         </button>
                       </div>
                     </td>

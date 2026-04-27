@@ -82,6 +82,8 @@ interface Company {
   reportEmails?: string[];
   reportScheduleTime?: string;
   reportScheduleDay?: number;
+  visitExtraEmails?: string[];
+  visitSchedule?: Array<{ day: number; enabled: boolean; time: string }>;
 }
 
 interface Unit {
@@ -115,6 +117,27 @@ export default function Settings() {
   const [templateToDelete, setTemplateToDelete] = useState<any>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [activePreviewUrl, setActivePreviewUrl] = useState('');
+
+  // Visit email schedule state (local editing before save)
+  type ScheduleDay = { day: number; enabled: boolean; time: string };
+  const DEFAULT_SCHEDULE: ScheduleDay[] = [0,1,2,3,4,5,6].map(d => ({ day: d, enabled: false, time: '' }));
+  const [visitScheduleMap, setVisitScheduleMap] = useState<Record<string, ScheduleDay[]>>({});
+  const [isSavingSchedule, setIsSavingSchedule] = useState<Record<string, boolean>>({});
+  const [newExtraEmail, setNewExtraEmail] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (companies.length === 0) return;
+    setVisitScheduleMap(prev => {
+      const next = { ...prev };
+      companies.forEach(c => {
+        if (!next[c.id]) {
+          const saved = c.visitSchedule;
+          next[c.id] = Array.isArray(saved) && saved.length === 7 ? saved : DEFAULT_SCHEDULE;
+        }
+      });
+      return next;
+    });
+  }, [companies]);
 
   const tabs = [
     { id: 'logs', label: 'Logs', icon: History },
@@ -339,6 +362,45 @@ export default function Settings() {
     }
   };
 
+  // Visit email schedule handlers
+  const handleScheduleToggle = (companyId: string, dayIdx: number, enabled: boolean) => {
+    setVisitScheduleMap(prev => {
+      const current = prev[companyId] ? [...prev[companyId]] : [0,1,2,3,4,5,6].map(d => ({ day: d, enabled: false, time: '' }));
+      current[dayIdx] = { ...current[dayIdx], enabled, time: enabled ? (current[dayIdx].time || '') : '' };
+      return { ...prev, [companyId]: current };
+    });
+  };
+
+  const handleScheduleTimeChange = (companyId: string, dayIdx: number, time: string) => {
+    setVisitScheduleMap(prev => {
+      const current = prev[companyId] ? [...prev[companyId]] : [0,1,2,3,4,5,6].map(d => ({ day: d, enabled: false, time: '' }));
+      current[dayIdx] = { ...current[dayIdx], time };
+      return { ...prev, [companyId]: current };
+    });
+  };
+
+  const handleSaveVisitSchedule = async (companyId: string) => {
+    const schedule = visitScheduleMap[companyId];
+    if (!schedule) return;
+    setIsSavingSchedule(prev => ({ ...prev, [companyId]: true }));
+    try {
+      await updateDoc(doc(db, 'companies', companyId), { visitSchedule: schedule });
+      alert('Programação salva com sucesso!');
+    } catch (e) {
+      alert('Erro ao salvar programação.');
+    } finally {
+      setIsSavingSchedule(prev => ({ ...prev, [companyId]: false }));
+    }
+  };
+
+  const handleUpdateVisitExtraEmails = async (companyId: string, emails: string[]) => {
+    try {
+      await updateDoc(doc(db, 'companies', companyId), { visitExtraEmails: emails });
+    } catch (e) {
+      alert('Erro ao atualizar e-mails.');
+    }
+  };
+
   const confirmDeleteTemplate = async () => {
      if (!templateToDelete) return;
      try {
@@ -511,152 +573,127 @@ export default function Settings() {
           <div className="p-8 animate-in slide-in-from-left-4 duration-500">
             <div className="space-y-8">
               <div>
-                <h3 className="text-xl font-black text-gray-800 tracking-tight mb-2">Gestão de E-mails para Relatórios</h3>
-                <p className="text-gray-500 font-medium">Cadastre os e-mails que receberão os relatórios automáticos de cada empresa</p>
+                <h3 className="text-xl font-black text-gray-800 tracking-tight mb-1">Envio de E-mail — Visitas Técnicas</h3>
+                <p className="text-gray-500 font-medium text-sm">Configure o envio automático dos relatórios de Visita Técnica ao final de cada turno. Os responsáveis cadastrados em cada visita também recebem automaticamente.</p>
               </div>
 
-              <div className="grid grid-cols-1 gap-6">
-                {companies.map(company => {
-                  const companyUnits = units.filter(u => u.companyId === company.id);
-                  return (
-                  <div key={company.id} className="p-6 bg-gray-50 rounded-[24px] border border-gray-100 space-y-4">
-                    <div className="flex items-center gap-3 border-b border-gray-200 pb-4 mb-4">
-                      <div className="p-2 bg-white rounded-xl shadow-sm">
-                        <Building2 className="h-5 w-5 text-[#27AE60]" />
-                      </div>
+              {companies.length === 0 && (
+                <div className="text-center py-12 bg-gray-50 rounded-[32px] border border-dashed border-gray-200">
+                  <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">Nenhuma empresa cadastrada.</p>
+                </div>
+              )}
+
+              {companies.map(company => {
+                const schedule = visitScheduleMap[company.id] || [0,1,2,3,4,5,6].map(d => ({ day: d, enabled: false, time: '' }));
+                const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                return (
+                  <div key={company.id} className="p-6 bg-gray-50 rounded-[24px] border border-gray-100 space-y-6">
+                    <div className="flex items-center gap-3 border-b border-gray-200 pb-4">
+                      <div className="p-2 bg-white rounded-xl shadow-sm"><Building2 className="h-5 w-5 text-[#27AE60]" /></div>
                       <h4 className="font-bold text-gray-800 text-lg">{company.name}</h4>
                     </div>
 
-                    {companyUnits.length === 0 ? (
-                      <div className="text-sm font-bold text-gray-500 py-4 px-2">
-                         Geral da Empresa (Pois não existem filiais cadastradas)
-                         <div className="mt-4 p-4 border rounded-xl bg-white shadow-sm space-y-4">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                              <span className="text-xs font-black uppercase tracking-widest text-[#1E3A5F]">E-mails (Geral)</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Envio Base (BRT):</span>
-                                <div className="flex items-center gap-1">
-                                  <select 
-                                    defaultValue={company.reportScheduleDay !== undefined ? company.reportScheduleDay : 5}
-                                    onChange={(e) => handleUpdateScheduleDay(company.id, Number(e.target.value))}
-                                    className="px-2 py-0.5 text-xs bg-gray-50 border border-gray-200 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
-                                  >
-                                    <option value={0}>Dom</option>
-                                    <option value={1}>Seg</option>
-                                    <option value={2}>Ter</option>
-                                    <option value={3}>Qua</option>
-                                    <option value={4}>Qui</option>
-                                    <option value={5}>Sex</option>
-                                    <option value={6}>Sáb</option>
-                                  </select>
-                                  <input 
-                                    type="time" defaultValue={company.reportScheduleTime || ''}
-                                    onBlur={(e) => handleUpdateScheduleTime(company.id, e.target.value)}
-                                    className="px-2 py-0.5 text-xs bg-gray-50 border border-gray-200 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {company.reportEmails?.map((email, idx) => (
-                                <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 group">
-                                  {email}
-                                  <button onClick={() => handleUpdateEmails(company.id, company.reportEmails?.filter((_, i) => i !== idx) || [])} className="text-gray-400 hover:text-red-500 transition-colors"><X className="h-3.5 w-3.5" /></button>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex gap-2">
-                              <input type="email" placeholder="Adicionar novo e-mail..."
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    const val = e.currentTarget.value.trim();
-                                    if (val && !company.reportEmails?.includes(val)) { handleUpdateEmails(company.id, [...(company.reportEmails || []), val]); e.currentTarget.value = ''; }
-                                  }
-                                }}
-                                className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-1 focus:ring-emerald-500"
+                    {/* Day schedule grid */}
+                    <div>
+                      <h5 className="text-xs font-black uppercase tracking-widest text-gray-500 mb-4">Programação de Envio Automático</h5>
+                      <div className="grid grid-cols-7 gap-2">
+                        {DAY_LABELS.map((dayLabel, dayIdx) => {
+                          const slot = schedule[dayIdx] || { day: dayIdx, enabled: false, time: '' };
+                          return (
+                            <div key={dayIdx} className={cn(
+                              'flex flex-col items-center gap-2 p-3 rounded-xl border transition-all',
+                              slot.enabled ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
+                            )}>
+                              <span className="text-xs font-black text-gray-600">{dayLabel}</span>
+                              <input
+                                type="checkbox"
+                                checked={slot.enabled}
+                                onChange={e => handleScheduleToggle(company.id, dayIdx, e.target.checked)}
+                                className="w-4 h-4 accent-[#27AE60] cursor-pointer"
+                              />
+                              <input
+                                type="time"
+                                value={slot.time}
+                                disabled={!slot.enabled}
+                                onChange={e => handleScheduleTimeChange(company.id, dayIdx, e.target.value)}
+                                className="w-full text-[10px] px-1 py-0.5 border border-gray-200 rounded bg-white focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-30 disabled:cursor-not-allowed"
                               />
                             </div>
-                         </div>
+                          );
+                        })}
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                         {companyUnits.map(unit => (
-                            <div key={unit.id} className="p-5 bg-white border border-gray-200 rounded-xl space-y-4 shadow-sm relative transition-all hover:border-emerald-200">
-                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-3">
-                                <h5 className="font-bold text-[#1E3A5F] flex items-center gap-2">
-                                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> {unit.name}
-                                </h5>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Automático (BRT):</span>
-                                  <div className="flex items-center gap-1">
-                                    <select 
-                                      defaultValue={unit.reportScheduleDay !== undefined ? unit.reportScheduleDay : 5}
-                                      onChange={(e) => handleUpdateUnitScheduleDay(unit.id, Number(e.target.value))}
-                                      className="px-2 py-1 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    >
-                                      <option value={0}>Dom</option>
-                                      <option value={1}>Seg</option>
-                                      <option value={2}>Ter</option>
-                                      <option value={3}>Qua</option>
-                                      <option value={4}>Qui</option>
-                                      <option value={5}>Sex</option>
-                                      <option value={6}>Sáb</option>
-                                    </select>
-                                    <input 
-                                      type="time" defaultValue={unit.reportScheduleTime || ''}
-                                      onBlur={(e) => handleUpdateUnitScheduleTime(unit.id, e.target.value)}
-                                      className="px-2 py-1 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <span className="text-xs font-black uppercase tracking-widest text-gray-400 block pb-1">Destinatários desta Unidade ({unit.reportEmails?.length || 0}):</span>
-                                <div className="flex flex-wrap gap-2">
-                                  {unit.reportEmails?.map((email, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 group">
-                                      {email}
-                                      <button onClick={() => handleUpdateUnitEmails(unit.id, unit.reportEmails?.filter((_, i) => i !== idx) || [])} className="text-gray-400 hover:text-red-500 transition-colors"><X className="h-3.5 w-3.5" /></button>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="flex gap-2 pt-2">
-                                  <input type="email" placeholder="Adicionar novo e-mail para esta filial..."
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        const val = e.currentTarget.value.trim();
-                                        if (val && !unit.reportEmails?.includes(val)) { handleUpdateUnitEmails(unit.id, [...(unit.reportEmails || []), val]); e.currentTarget.value = ''; }
-                                      }
-                                    }}
-                                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600/20 outline-none"
-                                  />
-                                  <button onClick={(e) => {
-                                    const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                                    const val = input.value.trim();
-                                    if (val && !unit.reportEmails?.includes(val)) { handleUpdateUnitEmails(unit.id, [...(unit.reportEmails || []), val]); input.value = ''; }
-                                  }} className="px-5 bg-[#27AE60] text-white rounded-xl hover:bg-[#219150] transition-all shadow-sm text-sm font-bold flex items-center justify-center">
-                                    <Plus className="h-4 w-4 mr-1" /> Add
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                         ))}
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          onClick={() => handleSaveVisitSchedule(company.id)}
+                          disabled={isSavingSchedule[company.id]}
+                          className="flex items-center gap-2 px-5 py-2 bg-[#27AE60] text-white rounded-xl font-bold text-sm hover:bg-[#219150] transition-all disabled:opacity-50 shadow-sm"
+                        >
+                          {isSavingSchedule[company.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                          Salvar Programação
+                        </button>
                       </div>
-                    )}
-                  </div>
-                )})}
+                    </div>
 
-                {companies.length === 0 && (
-                  <div className="text-center py-12 bg-gray-50 rounded-[32px] border border-dashed border-gray-200">
-                    <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium">Nenhuma empresa cadastrada para gerenciar e-mails.</p>
+                    {/* Extra emails */}
+                    <div>
+                      <h5 className="text-xs font-black uppercase tracking-widest text-gray-500 mb-1">E-mails Adicionais</h5>
+                      <p className="text-xs text-gray-400 mb-3">Além dos responsáveis de cada visita, estes e-mails também receberão o relatório.</p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {(company.visitExtraEmails || []).map((email, idx) => (
+                          <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600">
+                            {email}
+                            <button
+                              onClick={() => handleUpdateVisitExtraEmails(company.id, (company.visitExtraEmails || []).filter((_, i) => i !== idx))}
+                              className="text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        {(company.visitExtraEmails || []).length === 0 && (
+                          <p className="text-xs text-gray-400 italic">Nenhum e-mail adicional cadastrado.</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          placeholder="Adicionar e-mail adicional..."
+                          value={newExtraEmail[company.id] || ''}
+                          onChange={e => setNewExtraEmail(prev => ({ ...prev, [company.id]: e.target.value }))}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              const val = (newExtraEmail[company.id] || '').trim();
+                              if (val && !(company.visitExtraEmails || []).includes(val)) {
+                                handleUpdateVisitExtraEmails(company.id, [...(company.visitExtraEmails || []), val]);
+                                setNewExtraEmail(prev => ({ ...prev, [company.id]: '' }));
+                              }
+                            }
+                          }}
+                          className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                        <button
+                          onClick={() => {
+                            const val = (newExtraEmail[company.id] || '').trim();
+                            if (val && !(company.visitExtraEmails || []).includes(val)) {
+                              handleUpdateVisitExtraEmails(company.id, [...(company.visitExtraEmails || []), val]);
+                              setNewExtraEmail(prev => ({ ...prev, [company.id]: '' }));
+                            }
+                          }}
+                          className="px-5 py-2 bg-[#27AE60] text-white rounded-xl hover:bg-[#219150] transition-all shadow-sm text-sm font-bold flex items-center gap-1"
+                        >
+                          <Plus className="h-4 w-4" /> Add
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
           </div>
         )}
+
+
 
         {activeTab === 'access' && (
           <div className="animate-in fade-in duration-500">
