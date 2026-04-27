@@ -63,6 +63,7 @@ export default function TechnicalVisits() {
     technicianSignature: null as string | null,
     engineerSignature: null as string | null,
     photoUrl: null as string | null,
+    customItems: [] as { id: string; text: string; categoryId: string }[]
   });
   const [form, setForm] = useState(emptyForm());
 
@@ -117,6 +118,35 @@ export default function TechnicalVisits() {
       setForm(prev => ({ ...prev, checklistAnswers: { ...prev.checklistAnswers, ...answers } }));
     } catch (e) { alert('Falha no preenchimento via IA. Tente novamente.'); }
     finally { setAiLoading(false); }
+  };
+  const setCategoryAnswers = (cat: any, val: 'C' | 'NC' | 'NA') => {
+    const newAnswers = { ...form.checklistAnswers };
+    cat.items.forEach((item: any) => { newAnswers[item.id] = val; });
+    form.customItems.filter((ci: any) => ci.categoryId === cat.id).forEach((ci: any) => { newAnswers[ci.id] = val; });
+    setForm(prev => ({ ...prev, checklistAnswers: newAnswers }));
+  };
+
+  const addCustomItem = (categoryId: string) => {
+    const text = prompt('Descrição do novo item:');
+    if (!text?.trim()) return;
+    
+    const cat = TECHNICAL_CHECKLIST.find(c => c.id === categoryId);
+    if (!cat) return;
+
+    const existingIds = [
+      ...cat.items.map(i => i.id),
+      ...form.customItems.filter(ci => ci.categoryId === categoryId).map(ci => ci.id)
+    ];
+
+    const baseId = categoryId.split('.')[0];
+    const nextNum = existingIds.length + 1;
+    const newId = `${baseId}.${nextNum}`;
+    
+    setForm(prev => ({
+      ...prev,
+      customItems: [...prev.customItems, { id: newId, text: text.trim(), categoryId }],
+      checklistAnswers: { ...prev.checklistAnswers, [newId]: 'C' }
+    }));
   };
 
   const handleSave = async (e?: React.FormEvent, stayInForm = false) => {
@@ -455,41 +485,75 @@ export default function TechnicalVisits() {
                   value={form.numberOfEmployees} onChange={e => setForm({ ...form, numberOfEmployees: e.target.value })} placeholder="Ex: 50" />
               </div>
               <p className="text-xs text-gray-400 italic">Clique em "Preencher IA" na categoria desejada para analisar automaticamente com base nas inspeções selecionadas.</p>
-              {TECHNICAL_CHECKLIST.map(cat => (
-                <div key={cat.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                  <div className="bg-gray-800 text-white px-4 py-3 text-sm font-bold flex items-center justify-between">
-                    <span>{cat.id} {cat.title}</span>
-                    <button type="button" onClick={() => handleAIFillCategory(cat)} disabled={aiLoading === cat.id}
-                      className="flex items-center gap-1.5 bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-50">
-                      {aiLoading === cat.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                      {aiLoading === cat.id ? 'Analisando...' : 'Preencher IA'}
-                    </button>
-                  </div>
-                  <div className="divide-y divide-gray-100">
-                    {cat.items.map(item => {
-                      const ans = (form.checklistAnswers as any)[item.id] || 'C';
-                      return (
-                        <div key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
-                          <span className="text-xs font-bold text-gray-400 w-8 flex-shrink-0">{item.id}</span>
-                          <span className="text-xs text-gray-700 flex-1">{item.text}</span>
-                          <div className="flex gap-1 flex-shrink-0">
-                            {(['C', 'NC', 'NA'] as const).map(opt => (
-                              <button key={opt} type="button" onClick={() => setAnswer(item.id, opt)}
-                                className={`px-2 py-1 rounded text-xs font-bold transition-all border ${
-                                  ans === opt
-                                    ? opt === 'C'  ? 'bg-green-500 text-white border-green-500 shadow-inner'
-                                    : opt === 'NC' ? 'bg-red-500 text-white border-red-500 shadow-inner'
-                                    :                'bg-blue-600 text-white border-blue-600 shadow-inner'
-                                    : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-100'
-                                }`}>{opt}</button>
-                            ))}
-                          </div>
+              {TECHNICAL_CHECKLIST.map(cat => {
+                const combinedItems = [
+                  ...cat.items,
+                  ...form.customItems.filter(ci => ci.categoryId === cat.id)
+                ];
+
+                return (
+                  <div key={cat.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-gray-800 text-white px-4 py-3 text-sm font-bold flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-[#27AE60] text-white px-2 py-0.5 rounded text-[10px] font-black">{cat.id}</span>
+                        <span>{cat.title}</span>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex bg-white/10 p-1 rounded-lg">
+                          {(['C', 'NC', 'NA'] as const).map(opt => (
+                            <button key={opt} type="button" onClick={() => setCategoryAnswers(cat, opt)}
+                              className="px-2 py-1 hover:bg-white/20 rounded text-[9px] font-black transition-colors uppercase">
+                              Todos {opt}
+                            </button>
+                          ))}
                         </div>
-                      );
-                    })}
+
+                        <button type="button" onClick={() => handleAIFillCategory(cat)} disabled={aiLoading === cat.id}
+                          className="flex items-center gap-1.5 bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1.5 rounded-lg text-[10px] transition-colors disabled:opacity-50">
+                          {aiLoading === cat.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                          {aiLoading === cat.id ? 'IA...' : 'Preencher IA'}
+                        </button>
+                        
+                        <button type="button" onClick={() => addCustomItem(cat.id)}
+                          className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] transition-colors font-black uppercase">
+                          <Plus className="w-3 h-3" /> Item
+                        </button>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {combinedItems.map(item => {
+                        const ans = (form.checklistAnswers as any)[item.id] || 'C';
+                        const isCustom = form.customItems.some(ci => ci.id === item.id);
+                        return (
+                          <div key={item.id} className={cn(
+                            "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors",
+                            isCustom && "bg-emerald-50/30"
+                          )}>
+                            <span className="text-xs font-black text-[#27AE60] w-8 flex-shrink-0">{item.id}</span>
+                            <span className="text-xs text-gray-700 flex-1 font-medium">
+                              {item.text}
+                              {isCustom && <span className="ml-2 bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Personalizado</span>}
+                            </span>
+                            <div className="flex gap-1 flex-shrink-0">
+                              {(['C', 'NC', 'NA'] as const).map(opt => (
+                                <button key={opt} type="button" onClick={() => setAnswer(item.id, opt)}
+                                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-all border shadow-sm ${
+                                    ans === opt
+                                      ? opt === 'C'  ? 'bg-green-500 text-white border-green-500'
+                                      : opt === 'NC' ? 'bg-red-500 text-white border-red-500'
+                                      :                'bg-blue-600 text-white border-blue-600'
+                                      : 'bg-white text-gray-400 border-gray-100 hover:bg-gray-50 hover:text-gray-600'
+                                  }`}>{opt}</button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
