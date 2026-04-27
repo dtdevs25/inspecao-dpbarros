@@ -497,7 +497,7 @@ export default function TechnicalVisits() {
                 <label className="block text-sm font-bold text-gray-700 mb-2">Foto de Entrada da Obra (Capa)</label>
                 <div className="flex flex-col md:flex-row gap-4 items-stretch">
                   <div className="flex-1 relative border-2 border-dashed border-gray-300 rounded-2xl hover:border-[#27AE60] bg-gray-50 hover:bg-green-50/30 transition-colors group cursor-pointer overflow-hidden min-h-[160px]">
-                    <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                    <input type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 group-hover:text-[#27AE60] p-4 text-center">
                       <ImagePlus className="w-10 h-10 mb-3" />
                       <p className="text-sm font-bold">Clique ou arraste a imagem aqui</p>

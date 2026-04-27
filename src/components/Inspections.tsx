@@ -1166,6 +1166,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                           type="file" 
                           className="hidden" 
                           accept="image/*"
+                          capture="environment"
                           onChange={handleImageChange}
                         />
                       </label>
