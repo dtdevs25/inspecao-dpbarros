@@ -144,7 +144,7 @@ export class TechnicalVisitService {
         this.drawLine(page, marginX + tableW - colPageW, currentY, marginX + tableW - colPageW, currentY - row2H);
         
         drawCentered(subtitle.toUpperCase(), marginX + colLogoW, tableW - colLogoW - colPageW, currentY - mmToPt(8), fontBold, 11);
-        drawCentered(`Página ${pageNumber} de ${totalPages}`, marginX + tableW - colPageW, colPageW, currentY - mmToPt(8), fontRegular, 9);
+        // Pagination text is drawn in post-processing at the very end to guarantee correct total pages.
         
         currentY -= row2H;
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
@@ -229,8 +229,24 @@ export class TechnicalVisitService {
         await this.createChecklistPages(pdfDoc, visit, fontBold, fontRegular, pageNum++, totalPages);
 
         const pages = pdfDoc.getPages();
+        const totalPagesActual = pages.length;
         for (let i = 0; i < pages.length; i++) {
             const p = pages[i];
+            
+            // Draw Pagina X de Y in the header
+            const marginX = mmToPt(15);
+            const tableW = mmToPt(180);
+            const colPageW = mmToPt(35);
+            const headerPageTxt = `Página ${i + 1} de ${totalPagesActual}`;
+            const headerPageX = marginX + tableW - colPageW;
+            const headerPageY = mmToPt(297) - mmToPt(15) - mmToPt(8) - mmToPt(8);
+            p.drawText(headerPageTxt, {
+                x: headerPageX + (colPageW - fontRegular.widthOfTextAtSize(headerPageTxt, 9))/2,
+                y: headerPageY,
+                font: fontRegular,
+                size: 9
+            });
+
             const footerY = mmToPt(10);
             p.drawLine({
                 start: { x: mmToPt(15), y: footerY + mmToPt(10) },
@@ -539,7 +555,7 @@ export class TechnicalVisitService {
         for (const cat of CATS) {
             await ensure();
             // Category Header Row
-            pg.drawRectangle({ x: mx, y: cy-rh, width: tw, height: rh, borderColor: blk, borderWidth: 0.5 });
+            pg.drawRectangle({ x: mx, y: cy-rh, width: tw, height: rh, borderColor: blk, borderWidth: 0.5, color: rgb(0.92, 0.92, 0.92) });
             this.drawLine(pg, mx+col1W, cy, mx+col1W, cy-rh, blk, 0.5);
             this.drawLine(pg, mx+col1W+col2W, cy, mx+col1W+col2W, cy-rh, blk, 0.5);
             this.drawLine(pg, mx+col1W+col2W+col3W, cy, mx+col1W+col2W+col3W, cy-rh, blk, 0.5);
