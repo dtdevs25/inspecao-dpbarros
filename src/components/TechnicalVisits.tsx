@@ -216,6 +216,8 @@ export default function TechnicalVisits() {
   };
 
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [emailModal, setEmailModal] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
+
   const sendEmail = async (id: string) => {
     if (sendingEmail) return;
     setSendingEmail(id);
@@ -227,12 +229,24 @@ export default function TechnicalVisits() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(`✅ E-mail enviado com sucesso para ${data.sent} destinatário(s)!`);
+        setEmailModal({
+          type: 'success',
+          title: 'E-mail enviado!',
+          message: `Relatório enviado com sucesso para ${data.sent} destinatário(s).`
+        });
       } else {
-        alert(`❌ Erro: ${data.error || 'Falha ao enviar e-mail'}`);
+        setEmailModal({
+          type: 'error',
+          title: 'Falha no envio',
+          message: data.error || 'Não foi possível enviar o e-mail. Verifique os destinatários configurados.'
+        });
       }
-    } catch (e) {
-      alert('❌ Falha na conexão ao tentar enviar e-mail.');
+    } catch {
+      setEmailModal({
+        type: 'error',
+        title: 'Erro de conexão',
+        message: 'Falha na conexão ao tentar enviar o e-mail. Tente novamente.'
+      });
     } finally {
       setSendingEmail(null);
     }
@@ -622,5 +636,28 @@ export default function TechnicalVisits() {
         </div>
       </div>
     </div>
+
+    {/* Email Result Modal */}
+    {emailModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="bg-white rounded-[28px] shadow-2xl p-8 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
+          <div className={`flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-5 ${emailModal.type === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
+            {emailModal.type === 'success' ? (
+              <svg viewBox="0 0 24 24" className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            )}
+          </div>
+          <h3 className="text-xl font-black text-gray-800 text-center mb-2">{emailModal.title}</h3>
+          <p className="text-gray-500 text-center text-sm leading-relaxed mb-6">{emailModal.message}</p>
+          <button
+            onClick={() => setEmailModal(null)}
+            className={`w-full py-3 rounded-2xl font-bold text-white text-sm transition-all ${emailModal.type === 'success' ? 'bg-[#27AE60] hover:bg-[#219150]' : 'bg-red-500 hover:bg-red-600'}`}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    )}
   );
 }

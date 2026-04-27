@@ -52,6 +52,8 @@ model Unit {
   reportEmails       String[]
   reportScheduleTime String?
   reportScheduleDay  Int      @default(5)
+  visitExtraEmails   String[] // E-mails adicionais para visitas técnicas desta unidade
+  visitSchedule      Json?    // [{day:0,enabled:false,time:""}, ...] Dom-Sáb
   createdAt          DateTime @default(now())
 }
 

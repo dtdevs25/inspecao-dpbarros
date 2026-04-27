@@ -293,105 +293,125 @@ export const startCronJobs = () => {
     });
 
     // ---- TECHNICAL VISIT EMAIL CRON ----
-    // Runs every minute; checks if any company has a visit schedule enabled for today at the current time
+    // Runs every minute; checks units (and companies as fallback) for visitSchedule matching current day+time
     cron.schedule('* * * * *', async () => {
         try {
             const dateInBrt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-            const currentDay = dateInBrt.getDay(); // 0=Sun ... 6=Sat
+            const currentDay = dateInBrt.getDay();
             const hour = dateInBrt.getHours().toString().padStart(2, '0');
             const minute = dateInBrt.getMinutes().toString().padStart(2, '0');
             const currentTimeStr = `${hour}:${minute}`;
             const todayStr = dateInBrt.toISOString().split('T')[0];
 
-            // Fetch all companies that have a visitSchedule configured
-            const companies = await prisma.company.findMany({ where: { NOT: { visitSchedule: null } } });
+            const { TechnicalVisitService } = await import('./reports/TechnicalVisitService');
+            const { sendEmail } = await import('./email');
 
-            for (const company of companies) {
-                const schedule = company.visitSchedule as any[];
+            const sendVisitEmail = async (visit: any, extraEmailsFromConfig: string[]) => {
+                const recipients = new Map<string, null>();
+                const parseField = (field: string | null | undefined) => {
+                    if (!field) return;
+                    try { JSON.parse(field).forEach((e: string) => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); }); }
+                    catch { field.split(',').forEach(e => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); }); }
+                };
+                parseField(visit.engineerEmails);
+                parseField(visit.technicianEmails);
+                extraEmailsFromConfig.forEach(e => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
+
+                if (recipients.size === 0) { console.log(`[CRON-VISIT] Sem destinatários para visita ${visit.id}.`); return; }
+
+                const pdfBuffer = await TechnicalVisitService.generateReport(visit, prisma);
+                const unitSlug = (visit.unitName || '').replace(/[^a-zA-Z0-9]/g, '_');
+                const fileName = `relatorio_visita_${unitSlug}_${visit.date || Date.now()}.pdf`;
+                const dateDisplay = visit.date ? visit.date.split('-').reverse().join('/') : '';
+                const inspCount = Array.isArray(visit.inspectionIds) ? visit.inspectionIds.length : 0;
+
+                let sent = 0;
+                for (const [emailAddr] of recipients.entries()) {
+                    const html = `<div style="font-family:'Segoe UI',sans-serif;background:#f4f7f6;padding:40px 20px;text-align:center;">
+                        <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                            <div style="border-bottom:3px solid #27AE60;padding:30px 20px;"><h1 style="color:#27AE60;margin:0;">InspecPRO</h1>
+                            <p style="color:#555;margin:5px 0 0;font-weight:500;">Relatório de Visita Técnica</p></div>
+                            <div style="padding:40px 30px;text-align:left;">
+                                <p style="color:#555;font-size:16px;line-height:1.6;">Olá,</p>
+                                <p style="color:#555;font-size:16px;line-height:1.6;">Segue em anexo o Relatório de Visita Técnica realizada em <strong>${visit.unitName || ''}</strong> no dia <strong>${dateDisplay}</strong>.</p>
+                                <div style="background:#f0faf4;border-left:4px solid #27AE60;border-radius:4px;padding:16px;margin:16px 0;">
+                                    <p style="margin:0;color:#333;font-size:14px;"><strong>Unidade:</strong> ${visit.unitName || '-'}</p>
+                                    <p style="margin:6px 0 0;color:#333;font-size:14px;"><strong>Data:</strong> ${dateDisplay}</p>
+                                    <p style="margin:6px 0 0;color:#333;font-size:14px;"><strong>Apontamentos:</strong> ${inspCount}</p>
+                                </div>
+                                <p style="color:#555;font-size:16px;">Atenciosamente,<br/><strong>Equipe de Segurança do Trabalho</strong></p>
+                                <div style="margin-top:30px;border-top:1px solid #eee;padding-top:16px;text-align:center;">
+                                    <p style="color:#999;font-size:12px;margin:0;">⚠️ E-mail automático InspecPRO. Não responda esta mensagem.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                    const ok = await sendEmail(emailAddr, `Relatório Visita Técnica - ${visit.unitName || ''} (${dateDisplay})`, 'Relatório em anexo.', html, [{ filename: fileName, content: pdfBuffer, contentType: 'application/pdf' }]);
+                    if (ok) sent++;
+                }
+                await prisma.technicalVisit.update({ where: { id: visit.id }, data: { visitEmailSentAt: todayStr } });
+                await logAction('EMAIL_SENT', 'technical_visits', `E-mail automático da Visita Técnica (${visit.unitName}) enviado para ${sent} destinatário(s).`);
+                console.log(`[CRON-VISIT] Visita ${visit.id} (${visit.unitName}) enviada para ${sent} destinatário(s).`);
+            };
+
+            // --- Check UNITS with visitSchedule ---
+            const units = await prisma.unit.findMany({ where: { NOT: { visitSchedule: null } } });
+            const processedVisitIds = new Set<string>();
+
+            for (const unit of units) {
+                const schedule = unit.visitSchedule as any[];
                 if (!Array.isArray(schedule)) continue;
-
                 const todaySlot = schedule.find((s: any) => s.day === currentDay && s.enabled === true && s.time === currentTimeStr);
                 if (!todaySlot) continue;
 
-                // Find today's visits for this company not yet emailed today
+                const company = await prisma.company.findUnique({ where: { id: unit.companyId } });
                 const visitsToday = await prisma.technicalVisit.findMany({
-                    where: {
-                        companyId: company.id,
-                        date: todayStr,
-                        OR: [{ visitEmailSentAt: null }, { visitEmailSentAt: { not: todayStr } }]
-                    }
+                    where: { unitId: unit.id, date: todayStr, OR: [{ visitEmailSentAt: null }, { visitEmailSentAt: { not: todayStr } }] }
                 });
 
-                if (visitsToday.length === 0) {
-                    console.log(`[CRON-VISIT] Nenhuma visita pendente de envio hoje para ${company.name}.`);
-                    continue;
-                }
+                if (visitsToday.length === 0) continue;
+                console.log(`[CRON-VISIT] ${visitsToday.length} visita(s) para unidade ${unit.name} às ${currentTimeStr}`);
 
-                console.log(`[CRON-VISIT] Enviando ${visitsToday.length} visita(s) de ${company.name} às ${currentTimeStr}...`);
-
-                const { TechnicalVisitService } = await import('./reports/TechnicalVisitService');
-                const { sendEmail } = await import('./email');
+                // Merge unit + company extra emails
+                const extraEmails = [
+                    ...((unit as any).visitExtraEmails || []), 
+                    ...((unit as any).reportEmails || []),
+                    ...((company as any)?.visitExtraEmails || []),
+                    ...((company as any)?.reportEmails || [])
+                ];
 
                 for (const visit of visitsToday) {
                     try {
-                        const recipients = new Map<string, null>();
+                        await sendVisitEmail(visit, extraEmails);
+                        processedVisitIds.add(visit.id);
+                    } catch (e: any) { console.error(`[CRON-VISIT] Erro visita ${visit.id}:`, e); }
+                }
+            }
 
-                        const parseEmailField = (field: string | null | undefined) => {
-                            if (!field) return;
-                            try {
-                                const arr = JSON.parse(field);
-                                if (Array.isArray(arr)) arr.forEach((e: string) => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
-                            } catch {
-                                field.split(',').forEach(e => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
-                            }
-                        };
+            // --- Check COMPANIES with visitSchedule (for units without own schedule) ---
+            const companies = await prisma.company.findMany({ where: { NOT: { visitSchedule: null } } });
+            for (const company of companies) {
+                const schedule = company.visitSchedule as any[];
+                if (!Array.isArray(schedule)) continue;
+                const todaySlot = schedule.find((s: any) => s.day === currentDay && s.enabled === true && s.time === currentTimeStr);
+                if (!todaySlot) continue;
 
-                        parseEmailField(visit.engineerEmails);
-                        parseEmailField(visit.technicianEmails);
-                        ((company as any).visitExtraEmails || []).forEach((e: string) => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
+                const visitsToday = await prisma.technicalVisit.findMany({
+                    where: { companyId: company.id, date: todayStr, OR: [{ visitEmailSentAt: null }, { visitEmailSentAt: { not: todayStr } }] }
+                });
 
-                        if (recipients.size === 0) {
-                            console.log(`[CRON-VISIT] Sem destinatários para visita ${visit.id}. Pulando.`);
-                            continue;
-                        }
+                const unprocessed = visitsToday.filter(v => !processedVisitIds.has(v.id));
+                if (unprocessed.length === 0) continue;
+                console.log(`[CRON-VISIT] ${unprocessed.length} visita(s) pela programação da empresa ${company.name} às ${currentTimeStr}`);
 
-                        const pdfBuffer = await TechnicalVisitService.generateReport(visit, prisma);
-                        const unitSlug = (visit.unitName || '').replace(/[^a-zA-Z0-9]/g, '_');
-                        const fileName = `relatorio_visita_${unitSlug}_${visit.date || Date.now()}.pdf`;
-                        const dateDisplay = visit.date ? visit.date.split('-').reverse().join('/') : '';
-                        const inspCount = Array.isArray(visit.inspectionIds) ? visit.inspectionIds.length : 0;
-
-                        let sent = 0;
-                        for (const [emailAddr] of recipients.entries()) {
-                            const html = `<div style="font-family:'Segoe UI',sans-serif;background:#f4f7f6;padding:40px 20px;text-align:center;">
-                                <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.05);">
-                                    <div style="border-bottom:3px solid #27AE60;padding:30px 20px;"><h1 style="color:#27AE60;margin:0;">InspecPRO</h1>
-                                    <p style="color:#555;margin:5px 0 0;font-weight:500;">Relatório de Visita Técnica</p></div>
-                                    <div style="padding:40px 30px;text-align:left;">
-                                        <p style="color:#555;font-size:16px;line-height:1.6;">Olá,</p>
-                                        <p style="color:#555;font-size:16px;line-height:1.6;">Segue em anexo o Relatório de Visita Técnica realizada em <strong>${visit.unitName || ''}</strong> no dia <strong>${dateDisplay}</strong>.</p>
-                                        <div style="background:#f0faf4;border-left:4px solid #27AE60;border-radius:4px;padding:16px;margin:16px 0;">
-                                            <p style="margin:0;color:#333;font-size:14px;"><strong>Unidade:</strong> ${visit.unitName || '-'}</p>
-                                            <p style="margin:6px 0 0;color:#333;font-size:14px;"><strong>Data:</strong> ${dateDisplay}</p>
-                                            <p style="margin:6px 0 0;color:#333;font-size:14px;"><strong>Apontamentos:</strong> ${inspCount}</p>
-                                        </div>
-                                        <p style="color:#555;font-size:16px;">Atenciosamente,<br/><strong>Equipe de Segurança do Trabalho</strong></p>
-                                        <div style="margin-top:30px;border-top:1px solid #eee;padding-top:16px;text-align:center;">
-                                            <p style="color:#999;font-size:12px;margin:0;">⚠️ E-mail automático InspecPRO. Não responda esta mensagem.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>`;
-                            const ok = await sendEmail(emailAddr, `Relatório Visita Técnica - ${visit.unitName || ''} (${dateDisplay})`, 'Relatório em anexo.', html, [{ filename: fileName, content: pdfBuffer, contentType: 'application/pdf' }]);
-                            if (ok) sent++;
-                        }
-
-                        await prisma.technicalVisit.update({ where: { id: visit.id }, data: { visitEmailSentAt: todayStr } });
-                        await logAction('EMAIL_SENT', 'technical_visits', `E-mail automático da Visita Técnica (${visit.unitName}) enviado para ${sent} destinatário(s).`);
-                        console.log(`[CRON-VISIT] Visita ${visit.id} enviada para ${sent} destinatário(s).`);
-                    } catch (visitErr: any) {
-                        console.error(`[CRON-VISIT] Erro ao processar visita ${visit.id}:`, visitErr);
-                    }
+                const extraEmails = [...((company as any).visitExtraEmails || []), ...((company as any).reportEmails || [])];
+                for (const visit of unprocessed) {
+                    // Get unit-specific extra emails too
+                    const unitData = visit.unitId ? await prisma.unit.findUnique({ where: { id: visit.unitId } }) : null;
+                    const unitEmails = unitData ? [...((unitData as any).visitExtraEmails || []), ...((unitData as any).reportEmails || [])] : [];
+                    try {
+                        await sendVisitEmail(visit, [...extraEmails, ...unitEmails]);
+                    } catch (e: any) { console.error(`[CRON-VISIT] Erro visita ${visit.id}:`, e); }
                 }
             }
         } catch (cronVisitErr) {

@@ -723,7 +723,13 @@ router.post('/reports/technical-visit/:id/send-email', authenticate, async (req:
 
         parseEmailField(visit.engineerEmails);
         parseEmailField(visit.technicianEmails);
+        // Add company-level extra emails
         ((company as any)?.visitExtraEmails || []).forEach((e: string) => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
+        ((company as any)?.reportEmails || []).forEach((e: string) => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
+        // Add unit-level extra emails
+        const unit = visit.unitId ? await prisma.unit.findUnique({ where: { id: visit.unitId } }) : null;
+        ((unit as any)?.visitExtraEmails || []).forEach((e: string) => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
+        ((unit as any)?.reportEmails || []).forEach((e: string) => { if (e?.trim()) recipients.set(e.trim().toLowerCase(), null); });
 
         if (recipients.size === 0) {
             return res.status(400).json({ error: 'Nenhum destinatário configurado. Adicione e-mails dos responsáveis na visita técnica ou nos E-mails nas Configurações.' });
