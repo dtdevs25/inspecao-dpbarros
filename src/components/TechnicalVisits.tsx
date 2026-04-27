@@ -602,13 +602,14 @@ export default function TechnicalVisits() {
                 </button>
               )}
             </div>
-            {activeSection === sections.length - 1 && (
-              <button type="submit" disabled={saving}
+                    <button type="submit" disabled={saving}
                 className="bg-[#27AE60] hover:bg-[#219150] text-white px-8 py-3 rounded-xl font-bold disabled:opacity-60 flex items-center gap-2 shadow-lg shadow-green-100 transition-all active:scale-95">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {saving ? 'Salvando...' : 'Salvar Visita Técnica'}
               </button>
             )}
+          </div>
+          </form>
         </div>
       ) : (
         <div className="space-y-6">
@@ -620,77 +621,79 @@ export default function TechnicalVisits() {
             </button>
           </div>
 
-        <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input type="text" placeholder="Pesquisar por Unidade, Data, Registrado Por..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#27AE60] text-sm"
-              value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input type="text" placeholder="Pesquisar por Unidade, Data, Registrado Por..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#27AE60] text-sm"
+                value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
           </div>
-        </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-          <div className="bg-[#27AE60] p-4 text-white font-bold flex items-center justify-center gap-2">
-            <span>Visitas Técnicas (Total: {filteredVisits.length})</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-white border-b-2 border-green-500">
-                  <th className="py-3 px-3 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Nº</th>
-                  <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Unidade</th>
-                  <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Data</th>
-                  <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Apontamentos</th>
-                  <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Registrado Por</th>
-                  <th className="py-3 px-3 text-center text-xs font-bold text-[#27AE60] uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredVisits.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-gray-400 font-medium">
-                      Nenhuma visita técnica registrada ou encontrada na pesquisa.
-                    </td>
+          {/* Table */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+            <div className="bg-[#27AE60] p-4 text-white font-bold flex items-center justify-center gap-2">
+              <span>Visitas Técnicas (Total: {filteredVisits.length})</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-white border-b-2 border-green-500">
+                    <th className="py-3 px-3 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Nº</th>
+                    <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Unidade</th>
+                    <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Data</th>
+                    <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Apontamentos</th>
+                    <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Registrado Por</th>
+                    <th className="py-3 px-3 text-center text-xs font-bold text-[#27AE60] uppercase tracking-wider">Ações</th>
                   </tr>
-                ) : (
-                  filteredVisits.map((v, idx) => (
-                    <tr key={v.id} className="hover:bg-green-50/30 transition-colors">
-                      <td className="py-3 px-3 text-sm font-black text-gray-700">{filteredVisits.length - idx}</td>
-                      <td className="py-3 px-4 text-sm font-bold text-[#27AE60]">{v.unitName || '-'}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600 font-medium">
-                        {new Date(v.date).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">
-                        <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-bold text-xs">
-                          {v.inspectionIds?.length || 0}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-xs font-bold text-gray-500 uppercase">{v.registeredBy || '-'}</td>
-                      <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => openEdit(v)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar">
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => downloadPDF(v.id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Baixar PDF">
-                            <Download className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => sendEmail(v.id)}
-                            disabled={sendingEmail === v.id}
-                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
-                            title="Enviar por E-mail"
-                          >
-                            {sendingEmail === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                          </button>
-                        </div>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredVisits.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-gray-400 font-medium">
+                        Nenhuma visita técnica registrada ou encontrada na pesquisa.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredVisits.map((v, idx) => (
+                      <tr key={v.id} className="hover:bg-green-50/30 transition-colors">
+                        <td className="py-3 px-3 text-sm font-black text-gray-700">{filteredVisits.length - idx}</td>
+                        <td className="py-3 px-4 text-sm font-bold text-[#27AE60]">{v.unitName || '-'}</td>
+                        <td className="py-3 px-4 text-sm text-gray-600 font-medium">
+                          {new Date(v.date).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-bold text-xs">
+                            {v.inspectionIds?.length || 0}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-xs font-bold text-gray-500 uppercase">{v.registeredBy || '-'}</td>
+                        <td className="py-3 px-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button onClick={() => openEdit(v)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar">
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => downloadPDF(v.id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Baixar PDF">
+                              <Download className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => sendEmail(v.id)}
+                              disabled={sendingEmail === v.id}
+                              className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
+                              title="Enviar por E-mail"
+                            >
+                              {sendingEmail === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+        </div>
       )}
 
       {/* Custom Item Modal */}
