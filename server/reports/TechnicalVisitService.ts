@@ -411,7 +411,8 @@ export class TechnicalVisitService {
 
         // Header
         const headerH = mmToPt(8);
-        drawCentered('CONFORMIDADE/AÇÃO CORRETIVA', marginX, tableW, currentY - mmToPt(5.5), fontBold, 10);
+        const headerTxt = `${(inspection.type || 'CONFORMIDADE').toUpperCase()}/AÇÃO CORRETIVA`;
+        drawCentered(headerTxt, marginX, tableW, currentY - mmToPt(5.5), fontBold, 10);
         currentY -= headerH;
         this.drawLine(page, marginX, currentY, marginX + tableW, currentY);
 
@@ -427,7 +428,7 @@ export class TechnicalVisitService {
             currentY -= (mmToPt(6) + linesHeight); // base height + wrapped lines
         };
 
-        drawRowCompact('Conformidade', inspection.description || '');
+        drawRowCompact(inspection.type || 'Apontamento', inspection.description || 'Nada Consta');
         drawRowCompact('Risco/Perigo', inspection.risk || 'Nada Consta');
         drawRowCompact('Ação Imediata', inspection.resolution || 'Nada Consta');
         drawRowCompact('Ação Corretiva', inspection.correctiveAction || 'Nada Consta');

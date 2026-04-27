@@ -542,9 +542,10 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
   };
 
   const handleCreate = () => {
+    const dpBarros = companies.find(c => c.name.toLowerCase() === 'dp barros' || c.name.toLowerCase() === 'dpbarros');
     setSelectedItem(null);
     setFormData({
-      companyId: '',
+      companyId: dpBarros ? dpBarros.id : '',
       unitId: '',
       sectorId: '',
       locationId: '',
@@ -1046,40 +1047,6 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                     </select>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-600">Setor <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <Layers className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <select 
-                      required
-                      disabled={!formData.unitId}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all disabled:opacity-50"
-                      value={formData.sectorId}
-                      onChange={(e) => setFormData({ ...formData, sectorId: e.target.value, locationId: '' })}
-                    >
-                      <option value="">Selecione o Setor</option>
-                      {sectors.filter(s => s.unitId === formData.unitId).map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-600">Local <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <select 
-                      required
-                      disabled={!formData.sectorId}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all disabled:opacity-50"
-                      value={formData.locationId}
-                      onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
-                    >
-                      <option value="">Selecione o Local</option>
-                      {locations.filter(l => l.sectorId === formData.sectorId).map(l => (
-                        <option key={l.id} value={l.id}>{l.name}</option>
-                      ))}
-                    </select>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -1106,7 +1073,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
               <div className="space-y-6">
                 <div className="space-y-2 relative">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-gray-600">Apontamento (Situação Encontrada) <span className="text-red-500">*</span></label>
+                    <label className="text-sm font-bold text-gray-600">Situação Encontrada <span className="text-red-500">*</span></label>
                     <button 
                       onClick={() => handleAIAction('description')}
                       disabled={isCorrecting !== null}
@@ -1131,7 +1098,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-600">Tipo de Apontamento/Consequência <span className="text-red-500">*</span></label>
+                    <label className="text-sm font-bold text-gray-600">Tipo do Apontamento <span className="text-red-500">*</span></label>
                     <select 
                       required
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all"
@@ -1146,7 +1113,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                   </div>
                   <div className="space-y-2 relative">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-bold text-gray-600">Risco/Consequência</label>
+                      <label className="text-sm font-bold text-gray-600">Risco/Perigo</label>
                       <button 
                         onClick={() => handleAIAction('risk')}
                         disabled={isCorrecting !== null}
@@ -1223,7 +1190,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                 </div>
                 <div className="space-y-2 relative">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-gray-600">Resolução/Medida Proposta/Ação Tomada</label>
+                    <label className="text-sm font-bold text-gray-600">Ação Tomada (Imediata)</label>
                     <button 
                       onClick={() => handleAIAction('resolution')}
                       disabled={isCorrecting !== null}
@@ -1248,7 +1215,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                 </div>
                 <div className="space-y-2 relative mt-4">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-gray-600">Ação Corretiva (Complemento)</label>
+                    <label className="text-sm font-bold text-gray-600">Ação Corretiva</label>
                   </div>
                   <textarea 
                     rows={2}
@@ -1298,38 +1265,6 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                 </div>
               </div>
             </section>
-
-            {/* Observações */}
-            <section className="space-y-6">
-              <h3 className="text-[#27AE60] font-bold text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Observações
-              </h3>
-              <div className="space-y-2 relative">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-bold text-gray-600">Observações Adicionais</label>
-                  <button 
-                    onClick={() => handleAIAction('observations')}
-                    disabled={isCorrecting !== null}
-                    className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#27AE60] hover:text-[#219150] transition-colors disabled:opacity-50"
-                    title="Corrigir com IA"
-                  >
-                    {isCorrecting === 'observations' ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3 w-3" />
-                    )}
-                    IA Corrector
-                  </button>
-                </div>
-                <textarea 
-                  rows={3}
-                  value={formData.observations}
-                  onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                  placeholder="Alguma observação extra?"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                />
-              </div>
             </section>
 
             {/* Actions */}
