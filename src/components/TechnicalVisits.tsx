@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Edit2, Download, Mail, Sparkles, Loader2, ChevronDown, ChevronUp, Users, Calendar, ClipboardList, Search, X, Tag, ImagePlus } from 'lucide-react';
+import { Plus, Edit2, Download, Mail, Sparkles, Loader2, ChevronDown, ChevronUp, Users, Calendar, ClipboardList, Search, X, Tag, ImagePlus, Trash2 } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from '../lib/dbBridge';
 const db = {} as any;
 import { useUser } from '../contexts/UserContext';
@@ -159,6 +159,20 @@ export default function TechnicalVisits() {
     
     setNewItemText('');
     setCustomItemModal(null);
+  };
+
+  const removeCustomItem = (itemId: string) => {
+    if (!confirm('Deseja realmente excluir este item personalizado?')) return;
+    setForm(prev => {
+        const newCustomItems = prev.customItems.filter(ci => ci.id !== itemId);
+        const newAnswers = { ...prev.checklistAnswers };
+        delete newAnswers[itemId];
+        return {
+            ...prev,
+            customItems: newCustomItems,
+            checklistAnswers: newAnswers
+        };
+    });
   };
 
   const handleSave = async (e?: React.FormEvent, stayInForm = false) => {
@@ -548,17 +562,28 @@ export default function TechnicalVisits() {
                             <span className="text-xs text-gray-700 flex-1 font-medium">
                               {item.text}
                             </span>
-                            <div className="flex gap-1 flex-shrink-0">
+                            <div className="flex gap-1 flex-shrink-0 items-center">
                               {(['C', 'NC', 'NA'] as const).map(opt => (
-                                <button key={opt} type="button" onClick={() => setAnswer(item.id, opt)}
-                                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-all border shadow-sm ${
-                                    ans === opt
-                                      ? opt === 'C'  ? 'bg-green-500 text-white border-green-500'
-                                      : opt === 'NC' ? 'bg-red-500 text-white border-red-500'
-                                      :                'bg-blue-600 text-white border-blue-600'
-                                      : 'bg-white text-gray-400 border-gray-100 hover:bg-gray-50 hover:text-gray-600'
-                                  }`}>{opt}</button>
+                                <button key={opt} type="button"
+                                  onClick={() => setForm(prev => ({ ...prev, checklistAnswers: { ...prev.checklistAnswers, [item.id]: opt } }))}
+                                  className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all border-2
+                                    ${ans === opt 
+                                      ? opt === 'C' ? 'bg-[#27AE60] border-[#27AE60] text-white shadow-md shadow-green-100 scale-105'
+                                      : opt === 'NC' ? 'bg-red-500 border-red-500 text-white shadow-md shadow-red-100 scale-105'
+                                      : 'bg-gray-500 border-gray-500 text-white shadow-md shadow-gray-100 scale-105'
+                                      : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                                    }`}>
+                                  {opt}
+                                </button>
                               ))}
+                              
+                              {isCustom && (
+                                <button type="button" onClick={() => removeCustomItem(item.id)}
+                                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1"
+                                  title="Excluir item">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
