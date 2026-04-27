@@ -270,7 +270,9 @@ model TechnicalVisit {
   registeredBy    String?
   registeredByUid String?
   engineerResponsible   String?
+  engineerEmails        String?
   technicianResponsible String?
+  technicianEmails      String?
   engineerSignature     String?
   technicianSignature   String?
   createdAt       DateTime @default(now())
