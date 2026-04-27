@@ -157,14 +157,16 @@ export default function TechnicalVisits() {
 
         const items = cat.items || [];
         const nums = items.map((i: any) => {
-            const parts = (i.id || i.code).split('.');
+            const codeToParse = i.code || i.id || '';
+            const parts = codeToParse.split('.');
             const lastPart = parts[parts.length - 1];
             return parseInt(lastPart, 10);
         }).filter((n: number) => !isNaN(n));
         
         const max = nums.length > 0 ? Math.max(...nums) : 0;
-        const baseId = (cat.id || cat.code).split('.')[0];
-        const newCode = `${baseId}.${max + 1}`;
+        const categoryCode = cat.code || cat.id || '1.0';
+        const baseNumber = categoryCode.split('.')[0];
+        const newCode = `${baseNumber}.${max + 1}`;
 
         const apiUrl = (import.meta as any).env.VITE_API_URL || '';
         const res = await fetch(`${apiUrl}/api/checklist/items`, {
@@ -610,7 +612,7 @@ export default function TechnicalVisits() {
                         const ans = (form.checklistAnswers as any)[itemId] || 'C';
                         return (
                           <div key={itemId} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-                            <span className="text-xs font-black text-[#27AE60] w-8 flex-shrink-0">{itemCode}</span>
+                            <span className="text-xs font-black text-[#27AE60] w-12 flex-shrink-0">{itemCode}</span>
                             <span className="text-xs text-gray-700 flex-1 font-medium">
                               {item.text}
                             </span>
