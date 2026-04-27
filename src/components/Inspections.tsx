@@ -159,6 +159,16 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
     image: ''
   });
 
+  // Auto-select DP Barros when companies load and form is in create mode
+  useEffect(() => {
+    if (companies.length > 0 && viewMode === 'create' && !formData.companyId) {
+      const dpBarros = companies.find(c => c.name.toLowerCase().includes('dp barros') || c.name.toLowerCase().includes('dpbarros'));
+      if (dpBarros) {
+        setFormData(prev => ({ ...prev, companyId: dpBarros.id }));
+      }
+    }
+  }, [companies, viewMode]);
+
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -1558,8 +1568,6 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                 <th className="py-3 px-3 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Nº</th>
                 <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Unidade</th>
                 <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Data</th>
-                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Setor</th>
-                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Local</th>
                 <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Apontamento</th>
                 <th className="py-3 px-2 text-center text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Tipo</th>
                 <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Prazo</th>
@@ -1590,11 +1598,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                   >
                     <td className="py-3 px-3 text-sm font-medium text-gray-500 border-r border-gray-100">#{getSequentialNumber(item.id).toString().padStart(5, '0')}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 border-r border-gray-100">{item.unitName}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600 border-r border-gray-100 whitespace-nowrap">{
-                      item.date && item.date.includes('-') ? item.date.split('-').reverse().join('/') : item.date
-                    }</td>
-                    <td className="py-3 px-4 text-sm text-gray-600 border-r border-gray-100">{item.sectorName}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600 border-r border-gray-100">{item.locationName}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600 border-r border-gray-100 whitespace-nowrap">{item.date && item.date.includes('-') ? item.date.split('-').reverse().join('/') : item.date}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 border-r border-gray-100 truncate max-w-[150px]">{item.description || '---'}</td>
                     <td className="py-3 px-2 text-center border-r border-gray-100">
                       <div className="flex justify-center">

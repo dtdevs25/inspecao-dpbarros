@@ -208,13 +208,12 @@ export default function TechnicalVisits() {
     setViewMode('edit'); 
   };
 
-  const downloadPDF = async (id: string) => {
+  const downloadPDF = (id: string) => {
     const apiUrl = (import.meta as any).env.VITE_API_URL || '';
-    const res = await fetch(`${apiUrl}/api/reports/technical-visit/${id}/pdf`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-    if (!res.ok) { alert('Falha ao gerar PDF'); return; }
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `relatorio_${id.substring(0,6)}.pdf`; a.click();
+    const token = localStorage.getItem('token') || '';
+    // Open directly via URL with token as query param - avoids Chrome blocking async click
+    const url = `${apiUrl}/api/reports/technical-visit/${id}/pdf?token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank');
   };
 
   const addTag = (field: 'engineerResponsible' | 'technicianResponsible', emailField: 'engineerEmails' | 'technicianEmails', nameValue: string, emailValue: string) => {
