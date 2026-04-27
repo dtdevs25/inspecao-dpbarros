@@ -42,6 +42,8 @@ export default function TechnicalVisits() {
   const [saving, setSaving] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [activeSection, setActiveSection] = useState<number>(0);
+  const [customItemModal, setCustomItemModal] = useState<{ categoryId: string; categoryTitle: string } | null>(null);
+  const [newItemText, setNewItemText] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,34 +122,35 @@ export default function TechnicalVisits() {
     } catch (e) { alert('Falha no preenchimento via IA. Tente novamente.'); }
     finally { setAiLoading(false); }
   };
-  const setCategoryAnswers = (cat: any, val: 'C' | 'NC' | 'NA') => {
-    const newAnswers = { ...form.checklistAnswers };
-    cat.items.forEach((item: any) => { newAnswers[item.id] = val; });
-    form.customItems.filter((ci: any) => ci.categoryId === cat.id).forEach((ci: any) => { newAnswers[ci.id] = val; });
-    setForm(prev => ({ ...prev, checklistAnswers: newAnswers }));
-  };
-
-  const addCustomItem = (categoryId: string) => {
-    const text = prompt('Descrição do novo item:');
-    if (!text?.trim()) return;
+  const addCustomItem = () => {
+    if (!customItemModal || !newItemText.trim()) return;
     
+    const { categoryId } = customItemModal;
     const cat = TECHNICAL_CHECKLIST.find(c => c.id === categoryId);
     if (!cat) return;
 
-    const existingIds = [
-      ...cat.items.map(i => i.id),
-      ...form.customItems.filter(ci => ci.categoryId === categoryId).map(ci => ci.id)
+    const existing = [
+      ...cat.items,
+      ...form.customItems.filter(ci => ci.categoryId === categoryId)
     ];
 
+    const nums = existing.map(i => {
+        const parts = i.id.split('.');
+        return parseInt(parts[parts.length - 1], 10);
+    }).filter(n => !isNaN(n));
+    
+    const max = Math.max(...nums, 0);
     const baseId = categoryId.split('.')[0];
-    const nextNum = existingIds.length + 1;
-    const newId = `${baseId}.${nextNum}`;
+    const newId = `${baseId}.${max + 1}`;
     
     setForm(prev => ({
       ...prev,
-      customItems: [...prev.customItems, { id: newId, text: text.trim(), categoryId }],
+      customItems: [...prev.customItems, { id: newId, text: newItemText.trim(), categoryId }],
       checklistAnswers: { ...prev.checklistAnswers, [newId]: 'C' }
     }));
+    
+    setNewItemText('');
+    setCustomItemModal(null);
   };
 
   const handleSave = async (e?: React.FormEvent, stayInForm = false) => {
@@ -504,19 +507,13 @@ export default function TechnicalVisits() {
                         <div className="flex bg-white/10 p-1 rounded-lg">
                           {(['C', 'NC', 'NA'] as const).map(opt => (
                             <button key={opt} type="button" onClick={() => setCategoryAnswers(cat, opt)}
-                              className="px-2 py-1 hover:bg-white/20 rounded text-[9px] font-black transition-colors uppercase">
-                              Todos {opt}
+                              className="px-3 py-1 hover:bg-white/20 rounded text-[10px] font-black transition-colors uppercase">
+                              {opt}
                             </button>
                           ))}
                         </div>
 
-                        <button type="button" onClick={() => handleAIFillCategory(cat)} disabled={aiLoading === cat.id}
-                          className="flex items-center gap-1.5 bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1.5 rounded-lg text-[10px] transition-colors disabled:opacity-50">
-                          {aiLoading === cat.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                          {aiLoading === cat.id ? 'IA...' : 'Preencher IA'}
-                        </button>
-                        
-                        <button type="button" onClick={() => addCustomItem(cat.id)}
+                        <button type="button" onClick={() => setCustomItemModal({ categoryId: cat.id, categoryTitle: cat.title })}
                           className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] transition-colors font-black uppercase">
                           <Plus className="w-3 h-3" /> Item
                         </button>
@@ -529,12 +526,11 @@ export default function TechnicalVisits() {
                         return (
                           <div key={item.id} className={cn(
                             "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors",
-                            isCustom && "bg-emerald-50/30"
+                            isCustom && "bg-emerald-50/20"
                           )}>
                             <span className="text-xs font-black text-[#27AE60] w-8 flex-shrink-0">{item.id}</span>
                             <span className="text-xs text-gray-700 flex-1 font-medium">
                               {item.text}
-                              {isCustom && <span className="ml-2 bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Personalizado</span>}
                             </span>
                             <div className="flex gap-1 flex-shrink-0">
                               {(['C', 'NC', 'NA'] as const).map(opt => (
@@ -703,6 +699,54 @@ export default function TechnicalVisits() {
           </div>
         </div>
       </div>
+
+      {/* Custom Item Modal */}
+      {customItemModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] shadow-2xl p-8 max-w-md w-full mx-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600">
+                <Plus className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-gray-800 tracking-tight">Novo Item</h3>
+                <p className="text-gray-400 text-xs font-bold uppercase">{customItemModal.categoryId} {customItemModal.categoryTitle}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase mb-1.5 ml-1">Descrição do Item</label>
+                <textarea
+                  autoFocus
+                  rows={4}
+                  className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all resize-none"
+                  placeholder="Descreva o que deve ser verificado..."
+                  value={newItemText}
+                  onChange={e => setNewItemText(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setCustomItemModal(null); setNewItemText(''); }}
+                  className="flex-1 py-3.5 rounded-2xl font-black text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all text-sm uppercase"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={addCustomItem}
+                  disabled={!newItemText.trim()}
+                  className="flex-1 py-3.5 rounded-2xl font-black text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-all text-sm uppercase shadow-lg shadow-emerald-100"
+                >
+                  Adicionar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Email Result Modal */}
       {emailModal && createPortal(
