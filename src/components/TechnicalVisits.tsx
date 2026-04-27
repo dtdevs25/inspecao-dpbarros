@@ -601,7 +601,7 @@ export default function TechnicalVisits() {
                           ))}
                         </div>
 
-                        {profile?.role === 'Master' && (
+                        {(profile?.role === 'Master' || profile?.role === 'Administrador') && (
                           <button type="button" onClick={() => setCustomItemModal({ categoryId: cat.id || cat.code, categoryTitle: cat.title })}
                             className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] transition-colors font-black uppercase">
                             <Plus className="w-3 h-3" /> Item
@@ -634,7 +634,7 @@ export default function TechnicalVisits() {
                                 </button>
                               ))}
                               
-                              {profile?.role === 'Master' && (
+                              {(profile?.role === 'Master' || profile?.role === 'Administrador') && (
                                 <button type="button" onClick={() => setDeleteModal({ itemId, itemText: item.text })}
                                   className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1"
                                   title="Remover permanentemente do banco">
