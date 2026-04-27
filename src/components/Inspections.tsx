@@ -1021,7 +1021,7 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                 <Building2 className="h-5 w-5" />
                 Informações Gerais
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-gray-600">Empresa <span className="text-red-500">*</span></label>
                   <div className="relative">
@@ -1221,18 +1221,18 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all"
                   />
                 </div>
-                <div className="space-y-2 relative mt-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-gray-600">Ação Corretiva</label>
-                  </div>
-                  <textarea 
-                    rows={2}
-                    value={formData.correctiveAction}
-                    onChange={(e) => setFormData({ ...formData, correctiveAction: e.target.value })}
-                    placeholder="O que deve ser feito para resolver definitivamente?"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                  />
+              </div>
+              <div className="space-y-2 relative">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-gray-600">Ação Corretiva</label>
                 </div>
+                <textarea 
+                  rows={2}
+                  value={formData.correctiveAction}
+                  onChange={(e) => setFormData({ ...formData, correctiveAction: e.target.value })}
+                  placeholder="O que deve ser feito para resolver definitivamente?"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                />
               </div>
             </section>
 

@@ -331,9 +331,6 @@ export default function Registrations() {
 
   const tabs = [
     { id: 'empresas', label: 'Empresas', icon: Building2 },
-    { id: 'unidades', label: 'Unidades', icon: MapPin },
-    { id: 'setores', label: 'Setores', icon: Layers },
-    { id: 'locais', label: 'Locais', icon: LayoutGrid },
   ];
 
   // Helper function for sequential number (assuming it's defined elsewhere or a placeholder)
