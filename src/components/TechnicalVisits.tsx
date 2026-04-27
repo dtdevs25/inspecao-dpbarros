@@ -401,6 +401,17 @@ export default function TechnicalVisits() {
            new Date(v.date).toLocaleDateString('pt-BR').includes(term);
   });
 
+  const usedInspectionIds = useMemo(() => {
+    return visits
+      .filter(v => v.id !== selectedItem?.id)
+      .flatMap(v => v.inspectionIds || []);
+  }, [visits, selectedItem]);
+
+  const filteredInspections = inspections.filter(i => 
+    i.unitId === form.unitId && 
+    (!usedInspectionIds.includes(i.id) || form.inspectionIds.includes(i.id))
+  );
+
   return (
     <>
       {viewMode === 'create' || viewMode === 'edit' ? (
