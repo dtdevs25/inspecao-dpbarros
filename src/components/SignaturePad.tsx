@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Eraser, PenTool, X, RotateCcw } from 'lucide-react';
 
 interface SignaturePadProps {
@@ -134,6 +135,58 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
     setCurrentSignature(null);
   };
 
+  const modalContent = isModalOpen ? (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8">
+      {/* Portrait Warning Overlay for Mobile */}
+      {isPortrait && window.innerWidth < 768 && (
+        <div className="absolute inset-0 z-[100000] flex flex-col items-center justify-center bg-black text-white p-6 text-center">
+          <RotateCcw className="w-16 h-16 animate-bounce text-[#27AE60] mb-4" />
+          <h2 className="text-2xl font-black mb-2">Vire o Celular</h2>
+          <p className="text-gray-300">Por favor, vire o seu aparelho na horizontal para ter mais espaço para assinar.</p>
+          <button 
+            type="button"
+            onClick={() => setIsModalOpen(false)}
+            className="mt-8 px-6 py-2 border border-white rounded-full font-bold"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+      
+      <div className="bg-white w-full h-full max-w-5xl max-h-[80vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden relative">
+        <div className="bg-gray-100 p-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+          <h3 className="font-bold text-gray-800">{label}</h3>
+          <button type="button" onClick={() => setIsModalOpen(false)} className="p-2 bg-white rounded-full text-gray-500 hover:text-red-500 shadow-sm"><X className="w-5 h-5"/></button>
+        </div>
+        
+        <div className="flex-1 bg-gray-50 p-4 sm:p-8 relative">
+          <div className="w-full h-full border-2 border-gray-300 rounded-xl bg-white shadow-inner relative overflow-hidden">
+            <canvas
+              ref={canvasRef}
+              className="w-full h-full cursor-crosshair touch-none"
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={endDrawing}
+              onMouseLeave={endDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={endDrawing}
+            />
+          </div>
+        </div>
+        
+        <div className="bg-gray-100 p-4 border-t border-gray-200 flex items-center justify-between shrink-0">
+          <button type="button" onClick={clearSignature} className="px-6 py-3 text-red-500 font-bold flex items-center gap-2 hover:bg-red-50 rounded-xl transition-colors">
+            <Eraser className="w-5 h-5" /> Limpar
+          </button>
+          <button type="button" onClick={saveSignature} className="px-8 py-3 bg-[#27AE60] text-white font-bold rounded-xl shadow-lg hover:bg-[#219150] transition-colors">
+            Salvar Assinatura
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
@@ -166,57 +219,7 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
         </div>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8">
-          {/* Portrait Warning Overlay for Mobile */}
-          {isPortrait && window.innerWidth < 768 && (
-            <div className="absolute inset-0 z-[10000] flex flex-col items-center justify-center bg-black text-white p-6 text-center">
-              <RotateCcw className="w-16 h-16 animate-bounce text-[#27AE60] mb-4" />
-              <h2 className="text-2xl font-black mb-2">Vire o Celular</h2>
-              <p className="text-gray-300">Por favor, vire o seu aparelho na horizontal para ter mais espaço para assinar.</p>
-              <button 
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="mt-8 px-6 py-2 border border-white rounded-full font-bold"
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
-          
-          <div className="bg-white w-full h-full max-w-5xl max-h-[80vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden relative">
-            <div className="bg-gray-100 p-4 border-b border-gray-200 flex items-center justify-between shrink-0">
-              <h3 className="font-bold text-gray-800">{label}</h3>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="p-2 bg-white rounded-full text-gray-500 hover:text-red-500 shadow-sm"><X className="w-5 h-5"/></button>
-            </div>
-            
-            <div className="flex-1 bg-gray-50 p-4 sm:p-8 relative">
-              <div className="w-full h-full border-2 border-gray-300 rounded-xl bg-white shadow-inner relative overflow-hidden">
-                <canvas
-                  ref={canvasRef}
-                  className="w-full h-full cursor-crosshair touch-none"
-                  onMouseDown={startDrawing}
-                  onMouseMove={draw}
-                  onMouseUp={endDrawing}
-                  onMouseLeave={endDrawing}
-                  onTouchStart={startDrawing}
-                  onTouchMove={draw}
-                  onTouchEnd={endDrawing}
-                />
-              </div>
-            </div>
-            
-            <div className="bg-gray-100 p-4 border-t border-gray-200 flex items-center justify-between shrink-0">
-              <button type="button" onClick={clearSignature} className="px-6 py-3 text-red-500 font-bold flex items-center gap-2 hover:bg-red-50 rounded-xl transition-colors">
-                <Eraser className="w-5 h-5" /> Limpar
-              </button>
-              <button type="button" onClick={saveSignature} className="px-8 py-3 bg-[#27AE60] text-white font-bold rounded-xl shadow-lg hover:bg-[#219150] transition-colors">
-                Salvar Assinatura
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {isModalOpen && createPortal(modalContent, document.body)}
     </div>
   );
 }

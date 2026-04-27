@@ -178,7 +178,13 @@ export default function TechnicalVisits() {
         engineerResponsible: v.engineerResponsible ? v.engineerResponsible.split(',').map((s:string) => s.trim()).filter(Boolean) : [],
         technicianResponsible: v.technicianResponsible ? v.technicianResponsible.split(',').map((s:string) => s.trim()).filter(Boolean) : [],
     }); 
-    setImagePreview(v.photoUrl || null); 
+    
+    let parsedPhotoUrl = v.photoUrl || null;
+    if (parsedPhotoUrl && parsedPhotoUrl.startsWith('/api/files/')) {
+        parsedPhotoUrl = parsedPhotoUrl.replace('/api/files/', 'https://storage.ehspro.com.br/browser/');
+    }
+    setImagePreview(parsedPhotoUrl); 
+    
     setSelectedFile(null); 
     setActiveSection(0); 
     setViewMode('edit'); 
@@ -203,7 +209,7 @@ export default function TechnicalVisits() {
     setForm(prev => ({ ...prev, [field]: (prev[field] as string[]).filter((_, i) => i !== index) }));
   };
 
-  const sections = ['Dados Gerais', 'Documentacao SESMT', 'Inspecoes Vinculadas', 'Checklist NRs', 'Anotacoes Finais'];
+  const sections = ['Geral', 'Docs. SESMT', 'Inspeções', 'Check List', 'Anotações'];
 
   if (loading) return <div className="p-8 text-gray-500">Carregando...</div>;
 
