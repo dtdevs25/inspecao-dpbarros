@@ -178,6 +178,16 @@ export default function TechnicalVisits() {
   const openCreate = () => { setSelectedItem(null); setForm(emptyForm()); setImagePreview(null); setSelectedFile(null); setActiveSection(0); setViewMode('create'); };
   const openEdit = (v: any) => { 
     setSelectedItem(v); 
+    const getSecureUrl = (url: string | null, defaultBucket: string) => {
+        if (!url) return null;
+        if (url.startsWith('data:')) return url;
+        const token = localStorage.getItem('token') || '';
+        const apiUrl = (import.meta as any).env.VITE_API_URL || '';
+        if (url.startsWith('/api/files/')) return `${apiUrl}${url}?token=${token}`;
+        if (!url.startsWith('http')) return `${apiUrl}/api/files/${defaultBucket}/${url}?token=${token}`;
+        return url;
+    };
+
     setForm({ 
         ...emptyForm(), 
         ...v,
@@ -185,22 +195,11 @@ export default function TechnicalVisits() {
         engineerEmails: v.engineerEmails ? String(v.engineerEmails).split(',').map(s => s.trim()).filter(Boolean) : [],
         technicianResponsible: v.technicianResponsible ? String(v.technicianResponsible).split(',').map(s => s.trim()).filter(Boolean) : [],
         technicianEmails: v.technicianEmails ? String(v.technicianEmails).split(',').map(s => s.trim()).filter(Boolean) : [],
+        technicianSignature: getSecureUrl(v.technicianSignature, 'assinatura-dpbarros'),
+        engineerSignature: getSecureUrl(v.engineerSignature, 'assinatura-dpbarros'),
     }); 
     
-    let parsedPhotoUrl = v.photoUrl || null;
-    if (parsedPhotoUrl) {
-        if (parsedPhotoUrl.startsWith('/api/files/')) {
-            const parts = parsedPhotoUrl.split('/');
-            const bucket = parts[3];
-            const filename = parts[4];
-            if (bucket && filename) {
-                parsedPhotoUrl = `https://storage.ehspro.com.br/api/v1/buckets/${bucket}/objects/download?preview=true&prefix=${filename}&version_id=null`;
-            }
-        } else if (!parsedPhotoUrl.startsWith('http') && !parsedPhotoUrl.startsWith('data:')) {
-            parsedPhotoUrl = `https://storage.ehspro.com.br/api/v1/buckets/foto-visita-dpbarros/objects/download?preview=true&prefix=${parsedPhotoUrl}&version_id=null`;
-        }
-    }
-    setImagePreview(parsedPhotoUrl); 
+    setImagePreview(getSecureUrl(v.photoUrl, 'foto-visita-dpbarros')); 
     
     setSelectedFile(null); 
     setActiveSection(0); 
@@ -217,7 +216,10 @@ export default function TechnicalVisits() {
   };
 
   const addTag = (field: 'engineerResponsible' | 'technicianResponsible', emailField: 'engineerEmails' | 'technicianEmails', nameValue: string, emailValue: string) => {
-    if (!nameValue.trim()) return;
+    if (!nameValue.trim() || !emailValue.trim()) {
+        alert('Por favor, informe tanto o Nome quanto o E-mail.');
+        return;
+    }
     setForm(prev => ({ 
         ...prev, 
         [field]: [...(prev[field] as string[]), nameValue.trim()],
@@ -301,9 +303,11 @@ export default function TechnicalVisits() {
                       placeholder="Nome do Engenheiro..." value={engInput} onChange={e => setEngInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('engineerResponsible', 'engineerEmails', engInput, engEmailInput); } }} />
                     <input type="email" className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#27AE60] outline-none text-sm min-w-0"
-                      placeholder="E-mail (opcional)..." value={engEmailInput} onChange={e => setEngEmailInput(e.target.value)}
+                      placeholder="E-mail *" value={engEmailInput} onChange={e => setEngEmailInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('engineerResponsible', 'engineerEmails', engInput, engEmailInput); } }} />
-                    <button type="button" onClick={() => addTag('engineerResponsible', 'engineerEmails', engInput, engEmailInput)} className="bg-gray-100 hover:bg-gray-200 px-4 py-2 sm:py-0 rounded-xl font-bold text-sm text-gray-600 transition-colors">Add</button>
+                    <button type="button" onClick={() => addTag('engineerResponsible', 'engineerEmails', engInput, engEmailInput)} className="bg-gray-100 hover:bg-gray-200 px-4 py-2 sm:py-0 rounded-xl font-bold text-gray-600 transition-colors flex items-center justify-center">
+                      <Plus className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
                 <div>
@@ -321,9 +325,11 @@ export default function TechnicalVisits() {
                       placeholder="Nome do Técnico..." value={techInput} onChange={e => setTechInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('technicianResponsible', 'technicianEmails', techInput, techEmailInput); } }} />
                     <input type="email" className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#27AE60] outline-none text-sm min-w-0"
-                      placeholder="E-mail (opcional)..." value={techEmailInput} onChange={e => setTechEmailInput(e.target.value)}
+                      placeholder="E-mail *" value={techEmailInput} onChange={e => setTechEmailInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('technicianResponsible', 'technicianEmails', techInput, techEmailInput); } }} />
-                    <button type="button" onClick={() => addTag('technicianResponsible', 'technicianEmails', techInput, techEmailInput)} className="bg-gray-100 hover:bg-gray-200 px-4 py-2 sm:py-0 rounded-xl font-bold text-sm text-gray-600 transition-colors">Add</button>
+                    <button type="button" onClick={() => addTag('technicianResponsible', 'technicianEmails', techInput, techEmailInput)} className="bg-gray-100 hover:bg-gray-200 px-4 py-2 sm:py-0 rounded-xl font-bold text-gray-600 transition-colors flex items-center justify-center">
+                      <Plus className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               </div>
