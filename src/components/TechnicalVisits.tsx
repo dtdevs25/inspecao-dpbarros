@@ -389,10 +389,6 @@ export default function TechnicalVisits() {
     }));
   };
 
-  const sections = ['Geral', 'Docs. SESMT', 'Inspeções', 'Check List', 'Anotações'];
-
-  if (loading) return <div className="p-8 text-gray-500">Carregando...</div>;
-  
   const filteredVisits = visits.filter(v => {
     const term = searchTerm.toLowerCase();
     return (v.companyName || '').toLowerCase().includes(term) ||
@@ -411,6 +407,10 @@ export default function TechnicalVisits() {
     i.unitId === form.unitId && 
     (!usedInspectionIds.includes(i.id) || form.inspectionIds.includes(i.id))
   );
+
+  if (loading) return <div className="p-8 text-gray-500">Carregando...</div>;
+
+  const sections = ['Geral', 'Docs. SESMT', 'Inspeções', 'Check List', 'Anotações'];
 
   return (
     <>

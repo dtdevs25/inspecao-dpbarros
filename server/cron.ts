@@ -355,11 +355,7 @@ export const startCronJobs = () => {
             };
 
             // --- Check UNITS with visitSchedule ---
-            const units = await prisma.unit.findMany({ 
-              where: { 
-                NOT: { visitSchedule: { equals: null } }
-              } 
-            });
+            const units = await prisma.unit.findMany();
             const processedVisitIds = new Set<string>();
 
             for (const unit of units) {
@@ -393,7 +389,7 @@ export const startCronJobs = () => {
             }
 
             // --- Check COMPANIES with visitSchedule (for units without own schedule) ---
-            const companies = await prisma.company.findMany({ where: { NOT: { visitSchedule: null } } });
+            const companies = await prisma.company.findMany();
             for (const company of companies) {
                 const schedule = company.visitSchedule as any[];
                 if (!Array.isArray(schedule)) continue;
