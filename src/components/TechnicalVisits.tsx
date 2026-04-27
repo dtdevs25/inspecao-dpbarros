@@ -321,15 +321,15 @@ export default function TechnicalVisits() {
 
   if (loading) return <div className="p-8 text-gray-500">Carregando...</div>;
 
-  if (viewMode === 'create' || viewMode === 'edit') {
-    const filteredInspections = inspections.filter(i => (!form.companyId || i.companyId === form.companyId) && (!form.unitId || i.unitId === form.unitId));
-    return (
-      <div className="max-w-5xl mx-auto space-y-6 pb-16">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between border border-gray-100">
-          <h1 className="text-xl font-black text-[#1B4B66] tracking-tight">{viewMode === 'create' ? 'NOVA VISITA TÉCNICA' : 'EDITAR VISITA'}</h1>
-          <button onClick={() => setViewMode('list')} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition-colors">Voltar</button>
-        </div>
+  return (
+    <>
+      {viewMode === 'create' || viewMode === 'edit' ? (
+        <div className="max-w-5xl mx-auto space-y-6 pb-16">
+          {/* Header */}
+          <div className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between border border-gray-100">
+            <h1 className="text-xl font-black text-[#1B4B66] tracking-tight">{viewMode === 'create' ? 'NOVA VISITA TÉCNICA' : 'EDITAR VISITA'}</h1>
+            <button onClick={() => setViewMode('list')} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition-colors">Voltar</button>
+          </div>
 
         {/* Section tabs */}
         <div className="flex flex-wrap border-b border-gray-200 mt-6 px-2 gap-y-1">
@@ -609,30 +609,16 @@ export default function TechnicalVisits() {
                 {saving ? 'Salvando...' : 'Salvar Visita Técnica'}
               </button>
             )}
-          </div>
-        </form>
-      </div>
-    );
-  }
-
-  const filteredVisits = visits.filter(v => {
-    const term = searchTerm.toLowerCase();
-    return (v.companyName || '').toLowerCase().includes(term) ||
-           (v.unitName || '').toLowerCase().includes(term) ||
-           (v.registeredBy || '').toLowerCase().includes(term) ||
-           new Date(v.date).toLocaleDateString('pt-BR').includes(term);
-  });
-
-  return (
-    <>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between border border-gray-100">
-          <h1 className="text-xl font-black text-[#1B4B66] tracking-tight uppercase">VISITAS TÉCNICAS</h1>
-          <button onClick={openCreate} className="bg-[#27AE60] hover:bg-[#219150] text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 text-sm">
-            <Plus className="h-4 w-4" /> Nova Visita Técnica
-          </button>
         </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between border border-gray-100">
+            <h1 className="text-xl font-black text-[#1B4B66] tracking-tight uppercase">VISITAS TÉCNICAS</h1>
+            <button onClick={openCreate} className="bg-[#27AE60] hover:bg-[#219150] text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 text-sm">
+              <Plus className="h-4 w-4" /> Nova Visita Técnica
+            </button>
+          </div>
 
         <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <div className="relative w-full max-w-md">
@@ -705,12 +691,11 @@ export default function TechnicalVisits() {
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
+      )}
 
       {/* Custom Item Modal */}
       {customItemModal && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-[32px] shadow-2xl p-8 max-w-md w-full mx-4 animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600">
