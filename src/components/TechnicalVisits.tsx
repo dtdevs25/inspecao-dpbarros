@@ -8,6 +8,7 @@ import { uploadFile } from '../lib/upload';
 import { compressImage } from '../lib/utils';
 import { TECHNICAL_CHECKLIST, ChecklistAnswers, DEFAULT_CHECKLIST_ANSWERS, ALL_CHECKLIST_ITEMS } from '../constants/technicalChecklist';
 import { SignaturePad } from './SignaturePad';
+import { cn } from '../lib/utils';
 
 const SESMT_FIELDS = [
   { key: 'pgr',          label: 'PGR' },
