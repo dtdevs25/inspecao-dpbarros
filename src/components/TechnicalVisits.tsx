@@ -66,7 +66,8 @@ export default function TechnicalVisits() {
     technicianSignature: null as string | null,
     engineerSignature: null as string | null,
     photoUrl: null as string | null,
-    customItems: [] as { id: string; text: string; categoryId: string }[]
+    customItems: [] as { id: string; text: string; categoryId: string }[],
+    removedItems: [] as string[]
   });
   const [form, setForm] = useState(emptyForm());
 
@@ -161,19 +162,31 @@ export default function TechnicalVisits() {
     setCustomItemModal(null);
   };
 
-  const removeCustomItem = (itemId: string) => {
-    if (!confirm('Deseja realmente excluir este item personalizado?')) return;
+  const removeItem = (itemId: string) => {
+    if (!confirm('Deseja realmente remover este item do checklist desta visita?')) return;
+    
+    const isCustom = form.customItems.some(ci => ci.id === itemId);
+    
     setForm(prev => {
-        const newCustomItems = prev.customItems.filter(ci => ci.id !== itemId);
         const newAnswers = { ...prev.checklistAnswers };
         delete newAnswers[itemId];
-        return {
-            ...prev,
-            customItems: newCustomItems,
-            checklistAnswers: newAnswers
-        };
+
+        if (isCustom) {
+            return {
+                ...prev,
+                customItems: prev.customItems.filter(ci => ci.id !== itemId),
+                checklistAnswers: newAnswers
+            };
+        } else {
+            return {
+                ...prev,
+                removedItems: [...(prev.removedItems || []), itemId],
+                checklistAnswers: newAnswers
+            };
+        }
     });
   };
+
 
   const handleSave = async (e?: React.FormEvent, stayInForm = false) => {
     if (e) e.preventDefault();
@@ -250,6 +263,8 @@ export default function TechnicalVisits() {
     setForm({ 
         ...emptyForm(), 
         ...v,
+        customItems: v.customItems || [],
+        removedItems: v.removedItems || [],
         engineerResponsible: v.engineerResponsible ? String(v.engineerResponsible).split(',').map(s => s.trim()).filter(Boolean) : [],
         engineerEmails: v.engineerEmails ? String(v.engineerEmails).split(',').map(s => s.trim()).filter(Boolean) : [],
         technicianResponsible: v.technicianResponsible ? String(v.technicianResponsible).split(',').map(s => s.trim()).filter(Boolean) : [],
@@ -521,7 +536,7 @@ export default function TechnicalVisits() {
               <p className="text-xs text-gray-400 italic">Clique em "Preencher IA" na categoria desejada para analisar automaticamente com base nas inspeções selecionadas.</p>
               {TECHNICAL_CHECKLIST.map(cat => {
                 const combinedItems = [
-                  ...cat.items,
+                  ...cat.items.filter(i => !(form.removedItems || []).includes(i.id)),
                   ...form.customItems.filter(ci => ci.categoryId === cat.id)
                 ];
 
@@ -577,13 +592,11 @@ export default function TechnicalVisits() {
                                 </button>
                               ))}
                               
-                              {isCustom && (
-                                <button type="button" onClick={() => removeCustomItem(item.id)}
-                                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1"
-                                  title="Excluir item">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
+                              <button type="button" onClick={() => removeItem(item.id)}
+                                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1"
+                                title="Remover item">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
                         );
