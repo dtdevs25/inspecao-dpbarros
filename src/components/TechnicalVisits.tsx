@@ -61,6 +61,7 @@ export default function TechnicalVisits() {
     technicianEmails: [] as string[],
     technicianSignature: null as string | null,
     engineerSignature: null as string | null,
+    photoUrl: null as string | null,
   });
   const [form, setForm] = useState(emptyForm());
 
@@ -139,7 +140,8 @@ export default function TechnicalVisits() {
         technicianEmails: Array.isArray(form.technicianEmails) ? form.technicianEmails.join(', ') : form.technicianEmails,
       };
       if (selectedFile) data.photoUrl = await uploadFile(selectedFile, 'foto-visita-dpbarros');
-      else if (imagePreview) data.photoUrl = (form as any).photoUrl || imagePreview;
+      else if (imagePreview) data.photoUrl = form.photoUrl || imagePreview;
+      else data.photoUrl = null;
 
       const dataURLtoFile = (dataurl: string, filename: string) => {
         const arr = dataurl.split(',');
@@ -347,7 +349,7 @@ export default function TechnicalVisits() {
                   {imagePreview && (
                     <div className="w-full md:w-64 relative rounded-2xl border border-gray-200 bg-white p-2 shrink-0 flex items-center justify-center min-h-[160px]">
                       <img src={imagePreview} className="max-h-40 max-w-full object-contain rounded-xl" alt="Preview" />
-                      <button type="button" onClick={() => { setImagePreview(null); setSelectedFile(null); }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow hover:bg-red-600 z-20"><X className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => { setImagePreview(null); setSelectedFile(null); setForm({ ...form, photoUrl: null }); }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow hover:bg-red-600 z-20"><X className="w-4 h-4" /></button>
                     </div>
                   )}
                 </div>

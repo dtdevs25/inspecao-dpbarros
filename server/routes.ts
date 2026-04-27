@@ -713,14 +713,40 @@ const prismaModels: Record<string, keyof typeof prisma> = {
 };
 
 // Mapping of collections that have files in MinIO to their field and bucket
-const collectionFileMappers: Record<string, { field: string, bucket: string }> = {
-    'weekly_reports': { field: 'pdfUrl', bucket: BUCKETS.RELATORIO_PDF },
-    'inspections': { field: 'image', bucket: BUCKETS.FOTO_INSPECAO },
-    'action_plans': { field: 'photoAfter', bucket: BUCKETS.FOTO_PLANODEACAO },
-    'companies': { field: 'logo', bucket: BUCKETS.LOGO_EMPRESA },
-    'projects': { field: 'image', bucket: BUCKETS.FOTO_PROJETO },
-    'report_templates': { field: 'minioUrl', bucket: BUCKETS.MODELOS_RELATORIOS },
-    'technical_visits': { field: 'photoUrl', bucket: BUCKETS.FOTO_VISITA }
+const collectionFileMappers: Record<string, { field: string, bucket: string }[]> = {
+    'weekly_reports': [{ field: 'pdfUrl', bucket: BUCKETS.RELATORIO_PDF }],
+    'inspections': [{ field: 'image', bucket: BUCKETS.FOTO_INSPECAO }],
+    'action_plans': [{ field: 'photoAfter', bucket: BUCKETS.FOTO_PLANODEACAO }, { field: 'photoBefore', bucket: BUCKETS.FOTO_PLANODEACAO }],
+    'companies': [{ field: 'logo', bucket: BUCKETS.LOGO_EMPRESA }],
+    'projects': [{ field: 'image', bucket: BUCKETS.FOTO_PROJETO }],
+    'report_templates': [{ field: 'minioUrl', bucket: BUCKETS.MODELOS_RELATORIOS }],
+    'technical_visits': [
+        { field: 'photoUrl', bucket: BUCKETS.FOTO_VISITA },
+        { field: 'technicianSignature', bucket: BUCKETS.ASSINATURA },
+        { field: 'engineerSignature', bucket: BUCKETS.ASSINATURA }
+    ]
+};
+
+const deleteS3File = async (fileUrl: string | null | undefined, bucket: string) => {
+    if (!fileUrl) return;
+    try {
+        let filename = fileUrl;
+        if (fileUrl.includes('/api/files/')) {
+            filename = fileUrl.split('?')[0].split('/').pop() || '';
+        } else if (!fileUrl.startsWith('http') && !fileUrl.startsWith('data:')) {
+            filename = fileUrl;
+        } else {
+            return;
+        }
+        
+        if (filename) {
+            const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+            await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: filename }));
+            console.log(`[MINIO CLEANUP] Arquivo deletado do bucket ${bucket}: ${filename}`);
+        }
+    } catch (e) {
+        console.error('[MINIO CLEANUP ERROR]', e);
+    }
 };
 
 // GET all items from a collection
@@ -923,6 +949,24 @@ router.put('/data/:collection/:id', authenticate, async (req: any, res: any) => 
             }
         }
 
+        const fileMappers = collectionFileMappers[collection];
+        if (fileMappers) {
+            try {
+                const existingRecord = await model.findFirst({ where: filter });
+                if (existingRecord) {
+                    for (const mapper of fileMappers) {
+                        const oldVal = existingRecord[mapper.field];
+                        const newVal = data[mapper.field];
+                        if (data[mapper.field] !== undefined && oldVal && oldVal !== newVal) {
+                            await deleteS3File(oldVal, mapper.bucket);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('[MINIO CLEANUP ERROR on PUT]', err);
+            }
+        }
+
         const updated = await model.updateMany({ where: filter, data });
         if (updated.count === 0) return res.status(403).json({ error: 'Acesso negado ou registro não encontrado.' });
 
@@ -953,22 +997,13 @@ router.delete('/data/:collection/:id', authenticate, async (req: any, res: any) 
         }
 
         // PHYSICAL FILE CLEANUP (MinIO/S3)
-        const fileMapper = collectionFileMappers[collection];
-        if (fileMapper) {
+        const fileMappers = collectionFileMappers[collection];
+        if (fileMappers) {
             try {
                 const record = await model.findFirst({ where: filter });
-                if (record && record[fileMapper.field]) {
-                    const fileUrl = record[fileMapper.field];
-                    // Extract filename from URL (e.g. /api/files/bucket/filename.jpg -> filename.jpg)
-                    const filename = fileUrl.split('/').pop();
-                    
-                    if (filename && !filename.startsWith('http')) { // Only delete if it's an internal proxy URL
-                         const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
-                         await s3.send(new DeleteObjectCommand({
-                             Bucket: fileMapper.bucket,
-                             Key: filename
-                         }));
-                         console.log(`[MINIO CLEANUP] Arquivo deletado do bucket ${fileMapper.bucket}: ${filename}`);
+                if (record) {
+                    for (const mapper of fileMappers) {
+                        await deleteS3File(record[mapper.field], mapper.bucket);
                     }
                 }
             } catch (s3Error) {
