@@ -355,7 +355,11 @@ export const startCronJobs = () => {
             };
 
             // --- Check UNITS with visitSchedule ---
-            const units = await prisma.unit.findMany({ where: { NOT: { visitSchedule: null } } });
+            const units = await prisma.unit.findMany({ 
+              where: { 
+                NOT: { visitSchedule: { equals: null } }
+              } 
+            });
             const processedVisitIds = new Set<string>();
 
             for (const unit of units) {
