@@ -41,6 +41,7 @@ export default function TechnicalVisits() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [aiLoading, setAiLoading] = useState<string | false>(false);
+  const [activeSection, setActiveSection] = useState<number>(0);
   const [customItemModal, setCustomItemModal] = useState<{ categoryId: string; categoryTitle: string } | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ itemId: string; itemText: string } | null>(null);
   const [newItemText, setNewItemText] = useState('');
