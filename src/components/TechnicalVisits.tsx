@@ -122,6 +122,13 @@ export default function TechnicalVisits() {
     } catch (e) { alert('Falha no preenchimento via IA. Tente novamente.'); }
     finally { setAiLoading(false); }
   };
+  const setCategoryAnswers = (cat: any, val: 'C' | 'NC' | 'NA') => {
+    const newAnswers = { ...form.checklistAnswers };
+    cat.items.forEach((item: any) => { newAnswers[item.id] = val; });
+    form.customItems.filter((ci: any) => ci.categoryId === cat.id).forEach((ci: any) => { newAnswers[ci.id] = val; });
+    setForm(prev => ({ ...prev, checklistAnswers: newAnswers }));
+  };
+
   const addCustomItem = () => {
     if (!customItemModal || !newItemText.trim()) return;
     
@@ -136,10 +143,11 @@ export default function TechnicalVisits() {
 
     const nums = existing.map(i => {
         const parts = i.id.split('.');
-        return parseInt(parts[parts.length - 1], 10);
+        const lastPart = parts[parts.length - 1];
+        return parseInt(lastPart, 10);
     }).filter(n => !isNaN(n));
     
-    const max = Math.max(...nums, 0);
+    const max = nums.length > 0 ? Math.max(...nums) : 0;
     const baseId = categoryId.split('.')[0];
     const newId = `${baseId}.${max + 1}`;
     
