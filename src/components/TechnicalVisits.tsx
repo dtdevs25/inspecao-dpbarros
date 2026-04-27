@@ -554,110 +554,112 @@ export default function TechnicalVisits() {
   });
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between border border-gray-100">
-        <h1 className="text-xl font-black text-[#1B4B66] tracking-tight uppercase">VISITAS TÉCNICAS</h1>
-        <button onClick={openCreate} className="bg-[#27AE60] hover:bg-[#219150] text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 text-sm">
-          <Plus className="h-4 w-4" /> Nova Visita Técnica
-        </button>
-      </div>
-
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input type="text" placeholder="Pesquisar por Unidade, Data, Registrado Por..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#27AE60] text-sm"
-            value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-        <div className="bg-[#27AE60] p-4 text-white font-bold flex items-center justify-center gap-2">
-          <span>Visitas Técnicas (Total: {filteredVisits.length})</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-white border-b-2 border-green-500">
-                <th className="py-3 px-3 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Nº</th>
-                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Unidade</th>
-                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Data</th>
-                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Apontamentos</th>
-                <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Registrado Por</th>
-                <th className="py-3 px-3 text-center text-xs font-bold text-[#27AE60] uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredVisits.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-400 font-medium">
-                    Nenhuma visita técnica registrada ou encontrada na pesquisa.
-                  </td>
-                </tr>
-              ) : (
-                filteredVisits.map((v, idx) => (
-                  <tr key={v.id} className="hover:bg-green-50/30 transition-colors">
-                    <td className="py-3 px-3 text-sm font-black text-gray-700">{filteredVisits.length - idx}</td>
-                    <td className="py-3 px-4 text-sm font-bold text-[#27AE60]">{v.unitName || '-'}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600 font-medium">
-                      {new Date(v.date).toLocaleDateString('pt-BR')}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-bold text-xs">
-                        {v.inspectionIds?.length || 0}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-xs font-bold text-gray-500 uppercase">{v.registeredBy || '-'}</td>
-                    <td className="py-3 px-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => openEdit(v)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar">
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => downloadPDF(v.id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Baixar PDF">
-                          <Download className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => sendEmail(v.id)}
-                          disabled={sendingEmail === v.id}
-                          className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
-                          title="Enviar por E-mail"
-                        >
-                          {sendingEmail === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    {/* Email Result Modal */}
-    {emailModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="bg-white rounded-[28px] shadow-2xl p-8 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
-          <div className={`flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-5 ${emailModal.type === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
-            {emailModal.type === 'success' ? (
-              <svg viewBox="0 0 24 24" className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            )}
-          </div>
-          <h3 className="text-xl font-black text-gray-800 text-center mb-2">{emailModal.title}</h3>
-          <p className="text-gray-500 text-center text-sm leading-relaxed mb-6">{emailModal.message}</p>
-          <button
-            onClick={() => setEmailModal(null)}
-            className={`w-full py-3 rounded-2xl font-bold text-white text-sm transition-all ${emailModal.type === 'success' ? 'bg-[#27AE60] hover:bg-[#219150]' : 'bg-red-500 hover:bg-red-600'}`}
-          >
-            OK
+    <>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between border border-gray-100">
+          <h1 className="text-xl font-black text-[#1B4B66] tracking-tight uppercase">VISITAS TÉCNICAS</h1>
+          <button onClick={openCreate} className="bg-[#27AE60] hover:bg-[#219150] text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 text-sm">
+            <Plus className="h-4 w-4" /> Nova Visita Técnica
           </button>
         </div>
+
+        <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input type="text" placeholder="Pesquisar por Unidade, Data, Registrado Por..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#27AE60] text-sm"
+              value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+          <div className="bg-[#27AE60] p-4 text-white font-bold flex items-center justify-center gap-2">
+            <span>Visitas Técnicas (Total: {filteredVisits.length})</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-white border-b-2 border-green-500">
+                  <th className="py-3 px-3 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Nº</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Unidade</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Data</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Apontamentos</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-[#27AE60] uppercase tracking-wider border-r border-gray-100">Registrado Por</th>
+                  <th className="py-3 px-3 text-center text-xs font-bold text-[#27AE60] uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredVisits.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-gray-400 font-medium">
+                      Nenhuma visita técnica registrada ou encontrada na pesquisa.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredVisits.map((v, idx) => (
+                    <tr key={v.id} className="hover:bg-green-50/30 transition-colors">
+                      <td className="py-3 px-3 text-sm font-black text-gray-700">{filteredVisits.length - idx}</td>
+                      <td className="py-3 px-4 text-sm font-bold text-[#27AE60]">{v.unitName || '-'}</td>
+                      <td className="py-3 px-4 text-sm text-gray-600 font-medium">
+                        {new Date(v.date).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-bold text-xs">
+                          {v.inspectionIds?.length || 0}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-xs font-bold text-gray-500 uppercase">{v.registeredBy || '-'}</td>
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => openEdit(v)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar">
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => downloadPDF(v.id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Baixar PDF">
+                            <Download className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => sendEmail(v.id)}
+                            disabled={sendingEmail === v.id}
+                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
+                            title="Enviar por E-mail"
+                          >
+                            {sendingEmail === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-    )}
+
+      {/* Email Result Modal */}
+      {emailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[28px] shadow-2xl p-8 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
+            <div className={`flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-5 ${emailModal.type === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
+              {emailModal.type === 'success' ? (
+                <svg viewBox="0 0 24 24" className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              )}
+            </div>
+            <h3 className="text-xl font-black text-gray-800 text-center mb-2">{emailModal.title}</h3>
+            <p className="text-gray-500 text-center text-sm leading-relaxed mb-6">{emailModal.message}</p>
+            <button
+              onClick={() => setEmailModal(null)}
+              className={`w-full py-3 rounded-2xl font-bold text-white text-sm transition-all ${emailModal.type === 'success' ? 'bg-[#27AE60] hover:bg-[#219150]' : 'bg-red-500 hover:bg-red-600'}`}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
