@@ -88,11 +88,10 @@ export default function TechnicalVisits() {
             if (res.ok) {
                 const data = await res.json();
                 if (data && data.length > 0) {
-                    console.log('✅ Checklist carregado com sucesso do Banco de Dados:', data.length, 'categorias.');
                     setDbChecklist(data);
                 }
             }
-        } catch (e) { console.error('❌ Erro ao buscar checklist do banco:', e); }
+        } catch (e) { console.error('Erro ao buscar checklist do banco:', e); }
     };
     fetchChecklist();
 
@@ -582,13 +581,8 @@ export default function TechnicalVisits() {
                   <div key={cat.id || cat.code} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                     <div className="bg-gray-800 text-white px-4 py-3 text-sm font-bold flex flex-col md:flex-row md:items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <span className="bg-[#27AE60] text-white px-2 py-0.5 rounded text-[10px] font-black">{cat.id || cat.code}</span>
+                        <span className="bg-[#27AE60] text-white px-2 py-0.5 rounded text-[10px] font-black">{cat.code || cat.id}</span>
                         <span>{cat.title}</span>
-                        {dbChecklist.length > 0 && (
-                          <span className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border border-blue-500/30">
-                            Banco de Dados
-                          </span>
-                        )}
                       </div>
                       
                       <div className="flex flex-wrap items-center gap-2">
@@ -612,10 +606,11 @@ export default function TechnicalVisits() {
                     <div className="divide-y divide-gray-100">
                       {items.map((item: any) => {
                         const itemId = item.id || item.code;
+                        const itemCode = item.code || item.id;
                         const ans = (form.checklistAnswers as any)[itemId] || 'C';
                         return (
                           <div key={itemId} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-                            <span className="text-xs font-black text-[#27AE60] w-8 flex-shrink-0">{itemId}</span>
+                            <span className="text-xs font-black text-[#27AE60] w-8 flex-shrink-0">{itemCode}</span>
                             <span className="text-xs text-gray-700 flex-1 font-medium">
                               {item.text}
                             </span>
