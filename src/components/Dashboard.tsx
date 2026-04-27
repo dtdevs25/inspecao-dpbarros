@@ -669,125 +669,19 @@ export default function Dashboard({ setActiveTab, setPrefilledData }: any) {
               }}
             />
             <QuickActionButton 
-              icon={Rocket} 
-              label="Novo Projeto" 
-              color="bg-[#8E44AD]" 
-              onClick={() => {
-                if (setActiveTab) setActiveTab('Projetos');
-              }}
-            />
-            <QuickActionButton 
               icon={FileText} 
-              label="Relatório" 
+              label="Visita Técnica" 
               color="bg-[#27AE60]" 
               onClick={() => {
-                if (setActiveTab) setActiveTab('Relatórios');
+                if (setActiveTab) setActiveTab('Visita Técnica');
               }}
             />
             <QuickActionButton 
-              icon={Bell} 
-              label="Em Aberto" 
-              color="bg-[#FF8C2D]" 
-              onClick={async () => {
-                const openItems = filteredInspections.filter(i => i.status === 'Pendente');
-                
-                if (openItems.length === 0) {
-                   alert('Nenhum apontamento em aberto encontrado para os filtros atuais.');
-                   return;
-                }
-
-                const workbook = new ExcelJS.Workbook();
-                
-                // Agrupa os apontamentos por unidade
-                const groupedByUnit = openItems.reduce((acc, item) => {
-                   const unitName = item.unitName || item.companyName || 'Sem Unidade';
-                   let safeUnitName = unitName.replace(/[/\\?*:[\]]/g, '').trim().substring(0, 31);
-                   if (!safeUnitName) safeUnitName = 'Unidade';
-                   if (!acc[safeUnitName]) {
-                      acc[safeUnitName] = [];
-                   }
-                   acc[safeUnitName].push(item);
-                   return acc;
-                }, {} as Record<string, typeof openItems>);
-
-                Object.entries(groupedByUnit).forEach(([unitName, items]) => {
-                    const sheet = workbook.addWorksheet(unitName);
-
-                    sheet.columns = [
-                      { header: 'Data do Apontamento', key: 'data', width: 22 },
-                      { header: 'Número', key: 'numero', width: 14 },
-                      { header: 'Setor', key: 'setor', width: 25 },
-                      { header: 'Apontamento (Tipo / Descrição)', key: 'apontamento', width: 50 },
-                      { header: 'Responsável', key: 'responsavel', width: 30 },
-                      { header: 'Prazo', key: 'prazo', width: 16 }
-                    ];
-
-                    const headerRow = sheet.getRow(1);
-                    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-                    headerRow.fill = {
-                      type: 'pattern',
-                      pattern: 'solid',
-                      fgColor: { argb: 'FF27AE60' }
-                    };
-                    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-                    headerRow.height = 30;
-
-                    items.forEach(item => {
-                      let formattedDate = '---';
-                      if (item.createdAt) {
-                        const d = item.createdAt.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
-                        formattedDate = d.toLocaleDateString('pt-BR');
-                      }
-                      const numberFormatted = '#' + (inspectionSeqMap[item.id] || item.id.slice(-5));
-                      
-                      let desc = item.type || '';
-                      if (item.description && item.description !== item.type) {
-                           desc += ` - ${item.description}`;
-                      }
-
-                      let responsavel = item.responsible || 'Responsável não informado';
-
-                      let formattedPrazo = 'Sem prazo informado';
-                      if (item.dueDate) {
-                         const d = item.dueDate.toDate ? item.dueDate.toDate() : new Date(item.dueDate);
-                         formattedPrazo = d.toLocaleDateString('pt-BR');
-                      } else if (item.deadline) {
-                         const d = new Date(item.deadline + 'T00:00:00');
-                         if (!isNaN(d.getTime())) {
-                             formattedPrazo = d.toLocaleDateString('pt-BR');
-                         }
-                      }
-
-                      const row = sheet.addRow({
-                         data: formattedDate,
-                         numero: numberFormatted,
-                         setor: item.sectorName,
-                         apontamento: desc,
-                         responsavel: responsavel,
-                         prazo: formattedPrazo
-                      });
-
-                      row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                      row.getCell('apontamento').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-                      row.getCell('setor').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                      row.getCell('responsavel').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                    });
-
-                    sheet.eachRow((row) => {
-                      row.eachCell((cell) => {
-                        cell.border = {
-                          top: {style:'thin', color: {argb:'FFEEEEEE'}},
-                          left: {style:'thin', color: {argb:'FFEEEEEE'}},
-                          bottom: {style:'thin', color: {argb:'FFEEEEEE'}},
-                          right: {style:'thin', color: {argb:'FFEEEEEE'}}
-                        };
-                      });
-                    });
-                });
-
-                const buffer = await workbook.xlsx.writeBuffer();
-                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                saveAs(blob, 'Apontamentos_Em_Aberto.xlsx');
+              icon={ClipboardCheck} 
+              label="Planos de Ação" 
+              color="bg-[#8E44AD]" 
+              onClick={() => {
+                if (setActiveTab) setActiveTab('Planos de Ação');
               }}
             />
             <QuickActionButton 
