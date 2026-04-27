@@ -40,10 +40,11 @@ export default function TechnicalVisits() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [activeSection, setActiveSection] = useState<number>(0);
+  const [aiLoading, setAiLoading] = useState<string | false>(false);
   const [customItemModal, setCustomItemModal] = useState<{ categoryId: string; categoryTitle: string } | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ itemId: string; itemText: string } | null>(null);
   const [newItemText, setNewItemText] = useState('');
+  const [dbChecklist, setDbChecklist] = useState<any[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -78,6 +79,19 @@ export default function TechnicalVisits() {
       onSnapshot(collection(db, 'units'), s => setUnits(s.docs.map(d => ({ id: d.id, companyId: d.data().companyId, name: d.data().name })))),
       onSnapshot(query(collection(db, 'inspections'), orderBy('createdAt', 'desc')), s => setInspections(s.docs.map(d => ({ id: d.id, ...d.data() })))),
     ];
+
+    const fetchChecklist = async () => {
+        try {
+            const apiUrl = (import.meta as any).env.VITE_API_URL || '';
+            const res = await fetch(`${apiUrl}/api/checklist/categories`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.length > 0) setDbChecklist(data);
+            }
+        } catch (e) { console.error('Erro ao buscar checklist do banco', e); }
+    };
+    fetchChecklist();
+
     return () => unsubs.forEach(u => u());
   }, []);
 
@@ -163,8 +177,6 @@ export default function TechnicalVisits() {
   };
 
   const removeItem = (itemId: string) => {
-    if (!confirm('Deseja realmente remover este item do checklist desta visita?')) return;
-    
     const isCustom = form.customItems.some(ci => ci.id === itemId);
     
     setForm(prev => {
@@ -185,6 +197,7 @@ export default function TechnicalVisits() {
             };
         }
     });
+    setDeleteModal(null);
   };
 
 
@@ -534,10 +547,10 @@ export default function TechnicalVisits() {
                   value={form.numberOfEmployees} onChange={e => setForm({ ...form, numberOfEmployees: e.target.value })} placeholder="Ex: 50" />
               </div>
               <p className="text-xs text-gray-400 italic">Clique em "Preencher IA" na categoria desejada para analisar automaticamente com base nas inspeções selecionadas.</p>
-              {TECHNICAL_CHECKLIST.map(cat => {
+              {(dbChecklist.length > 0 ? dbChecklist : TECHNICAL_CHECKLIST).map(cat => {
                 const combinedItems = [
-                  ...cat.items.filter(i => !(form.removedItems || []).includes(i.id)),
-                  ...form.customItems.filter(ci => ci.categoryId === cat.id)
+                  ...(cat.items || []).filter((i: any) => !(form.removedItems || []).includes(i.id || i.code)),
+                  ...form.customItems.filter(ci => ci.categoryId === (cat.id || cat.code))
                 ];
 
                 return (
@@ -592,7 +605,7 @@ export default function TechnicalVisits() {
                                 </button>
                               ))}
                               
-                              <button type="button" onClick={() => removeItem(item.id)}
+                              <button type="button" onClick={() => setDeleteModal({ itemId: item.id || item.code, itemText: item.text })}
                                 className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1"
                                 title="Remover item">
                                 <Trash2 className="w-4 h-4" />
@@ -606,6 +619,35 @@ export default function TechnicalVisits() {
                 );
               })}
             </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {deleteModal && createPortal(
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100000] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="p-6 text-center">
+                  <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Trash2 className="w-8 h-8 text-red-500" />
+                  </div>
+                  <h3 className="text-xl font-black text-gray-900 mb-2">Excluir Item?</h3>
+                  <p className="text-gray-500 text-sm mb-6">
+                    Você tem certeza que deseja excluir o item <span className="font-bold text-gray-700 italic">"{deleteModal.itemText}"</span>?
+                    <br/><span className="text-red-500 font-bold mt-2 block">⚠️ Esta operação não poderá ser desfeita.</span>
+                  </p>
+                  <div className="flex gap-3">
+                    <button onClick={() => setDeleteModal(null)}
+                      className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">
+                      Cancelar
+                    </button>
+                    <button onClick={() => removeItem(deleteModal.itemId)}
+                      className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-100 transition-all active:scale-95">
+                      Confirmar Exclusão
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>,
+            document.body
           )}
 
           {/* Section 4: Final Notes */}

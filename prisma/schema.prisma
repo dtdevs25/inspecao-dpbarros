@@ -271,6 +271,8 @@ model TechnicalVisit {
   // Vínculo com inspeções
   inspectionIds   String[]
 
+  customItems     Json?    // [{id, text, categoryId}]
+  removedItems    Json?    // [id1, id2, ...]
   registeredBy    String?
   registeredByUid String?
   engineerResponsible   String?
@@ -282,4 +284,21 @@ model TechnicalVisit {
   visitEmailSentAt      String?  // Date (YYYY-MM-DD) of last automatic/manual email send
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model ChecklistCategory {
+  id        String          @id @default(uuid())
+  code      String          @unique // e.g. "1.0"
+  title     String
+  order     Int             @default(0)
+  items     ChecklistItem[]
+}
+
+model ChecklistItem {
+  id          String            @id @default(uuid())
+  categoryId  String
+  category    ChecklistCategory @relation(fields: [categoryId], references: [id])
+  code        String            // e.g. "1.1"
+  text        String
+  order       Int               @default(0)
 }
