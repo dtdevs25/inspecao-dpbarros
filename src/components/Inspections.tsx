@@ -1047,8 +1047,6 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                     </select>
                   </div>
                 </div>
-                  </div>
-                </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-gray-600">Data do Apontamento <span className="text-red-500">*</span></label>
                   <input 
@@ -1264,7 +1262,6 @@ export default function Inspections({ prefilledData, onClearPrefilledData, setAc
                   />
                 </div>
               </div>
-            </section>
             </section>
 
             {/* Actions */}
