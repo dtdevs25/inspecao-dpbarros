@@ -145,8 +145,9 @@ export default function Settings() {
     { id: 'logs', label: 'Logs', icon: History },
     { id: 'email', label: 'E-mail', icon: Mail },
     { id: 'access', label: 'Acessos', icon: ShieldCheck },
-    { id: 'templates', label: 'Modelos de Relatório', icon: Layout },
   ];
+
+  const [unitSearchTerm, setUnitSearchTerm] = useState('');
 
   useEffect(() => {
     if (isDemo) {
@@ -579,6 +580,18 @@ export default function Settings() {
                 <p className="text-gray-500 font-medium text-sm">Configure o envio automático por unidade. Os responsáveis cadastrados em cada visita também recebem automaticamente.</p>
               </div>
 
+              {/* Unit Search Field */}
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar unidade..."
+                  value={unitSearchTerm}
+                  onChange={e => setUnitSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                />
+              </div>
+
               {companies.length === 0 && (
                 <div className="text-center py-12 bg-gray-50 rounded-[32px] border border-dashed border-gray-200">
                   <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -587,7 +600,13 @@ export default function Settings() {
               )}
 
               {companies.map(company => {
-                const companyUnits = units.filter(u => u.companyId === company.id);
+                const companyUnits = units
+                  .filter(u => u.companyId === company.id)
+                  .filter(u => u.name.toLowerCase().includes(unitSearchTerm.toLowerCase()))
+                  .sort((a, b) => a.name.localeCompare(b.name));
+
+                if (unitSearchTerm && companyUnits.length === 0) return null;
+
                 const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
                 return (
                   <div key={company.id} className="space-y-4">

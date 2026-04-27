@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Edit2, Download, Mail, Sparkles, Loader2, ChevronDown, ChevronUp, Users, Calendar, ClipboardList, Search, X, Tag, ImagePlus } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from '../lib/dbBridge';
 const db = {} as any;
@@ -639,26 +640,27 @@ export default function TechnicalVisits() {
       </div>
 
       {/* Email Result Modal */}
-      {emailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[28px] shadow-2xl p-8 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
-            <div className={`flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-5 ${emailModal.type === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
+      {emailModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-10 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
+            <div className={`flex items-center justify-center w-20 h-20 rounded-full mx-auto mb-6 ${emailModal.type === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
               {emailModal.type === 'success' ? (
-                <svg viewBox="0 0 24 24" className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                <svg viewBox="0 0 24 24" className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
               ) : (
-                <svg viewBox="0 0 24 24" className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg viewBox="0 0 24 24" className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               )}
             </div>
-            <h3 className="text-xl font-black text-gray-800 text-center mb-2">{emailModal.title}</h3>
-            <p className="text-gray-500 text-center text-sm leading-relaxed mb-6">{emailModal.message}</p>
+            <h3 className="text-2xl font-black text-gray-800 text-center mb-3 tracking-tight">{emailModal.title}</h3>
+            <p className="text-gray-500 text-center text-base leading-relaxed mb-8 font-medium">{emailModal.message}</p>
             <button
               onClick={() => setEmailModal(null)}
-              className={`w-full py-3 rounded-2xl font-bold text-white text-sm transition-all ${emailModal.type === 'success' ? 'bg-[#27AE60] hover:bg-[#219150]' : 'bg-red-500 hover:bg-red-600'}`}
+              className={`w-full py-4 rounded-2xl font-black text-white text-base transition-all transform active:scale-95 shadow-lg ${emailModal.type === 'success' ? 'bg-[#27AE60] hover:bg-[#219150] shadow-green-200' : 'bg-red-500 hover:bg-red-600 shadow-red-200'}`}
             >
               OK
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
