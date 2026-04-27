@@ -22,6 +22,7 @@ export const BUCKETS = {
     RELATORIO_PDF:       'relatorio-pdf',
     MODELOS_RELATORIOS:  'modelos-relatorios-dpbarros',
     FOTO_VISITA:         'foto-visita-dpbarros',
+    ASSINATURA:          'assinatura-dpbarros',
 };
 
 // Configuração do Multer (mantém em memória para enviar pro S3)

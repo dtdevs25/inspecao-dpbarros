@@ -181,7 +181,13 @@ export default function TechnicalVisits() {
     
     let parsedPhotoUrl = v.photoUrl || null;
     if (parsedPhotoUrl && parsedPhotoUrl.startsWith('/api/files/')) {
-        parsedPhotoUrl = parsedPhotoUrl.replace('/api/files/', 'https://storage.ehspro.com.br/browser/');
+        const parts = parsedPhotoUrl.split('/');
+        // parts = ['', 'api', 'files', 'foto-visita-dpbarros', '1777229230523_obraentrada.jpg']
+        const bucket = parts[3];
+        const filename = parts[4];
+        if (bucket && filename) {
+            parsedPhotoUrl = `https://storage.ehspro.com.br/api/v1/buckets/${bucket}/objects/download?preview=true&prefix=${filename}&version_id=null`;
+        }
     }
     setImagePreview(parsedPhotoUrl); 
     
@@ -224,10 +230,10 @@ export default function TechnicalVisits() {
         </div>
 
         {/* Section tabs */}
-        <div className="flex overflow-x-auto no-scrollbar border-b border-gray-200 mt-6 px-2">
+        <div className="flex flex-wrap border-b border-gray-200 mt-6 px-2 gap-y-1">
           {sections.map((s, i) => (
             <button key={i} type="button" onClick={() => setActiveSection(i)}
-              className={`px-6 py-3 text-sm font-bold transition-all relative border-t border-x rounded-t-xl -mb-px whitespace-nowrap
+              className={`px-4 py-3 text-[13px] sm:text-sm font-bold transition-all relative border-t border-x rounded-t-xl -mb-px
                 ${activeSection === i 
                   ? 'bg-white border-gray-200 text-[#27AE60]' 
                   : 'bg-transparent border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
