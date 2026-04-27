@@ -2113,6 +2113,62 @@ router.get('/checklist/categories', async (req, res) => {
     }
 });
 
+router.post('/checklist/items', async (req, res) => {
+    try {
+        const { categoryId, code, text, order } = req.body;
+        
+        // Find category internal ID by code if needed
+        const category = await prisma.checklistCategory.findFirst({
+            where: { OR: [{ id: categoryId }, { code: categoryId }] }
+        });
+
+        if (!category) return res.status(404).json({ error: 'Categoria não encontrada' });
+
+        const item = await prisma.checklistItem.create({
+            data: {
+                categoryId: category.id,
+                code,
+                text,
+                order: order || 0
+            }
+        });
+        res.json(item);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao criar item' });
+    }
+});
+
+router.delete('/checklist/items/:idOrCode', async (req, res) => {
+    try {
+        const { idOrCode } = req.params;
+        const { categoryId } = req.query; // Optional to disambiguate code
+
+        let item;
+        if (categoryId) {
+            const cat = await prisma.checklistCategory.findFirst({
+                where: { OR: [{ id: String(categoryId) }, { code: String(categoryId) }] }
+            });
+            item = await prisma.checklistItem.findFirst({
+                where: { code: idOrCode, categoryId: cat?.id }
+            });
+        }
+
+        if (!item) {
+            item = await prisma.checklistItem.findFirst({
+                where: { OR: [{ id: idOrCode }, { code: idOrCode }] }
+            });
+        }
+
+        if (!item) return res.status(404).json({ error: 'Item não encontrado' });
+
+        await prisma.checklistItem.delete({ where: { id: item.id } });
+        res.json({ message: 'Item removido com sucesso' });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao remover item' });
+    }
+});
+
 router.post('/admin/seed-checklist', async (req, res) => {
     try {
         const TECHNICAL_CHECKLIST = [

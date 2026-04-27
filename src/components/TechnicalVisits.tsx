@@ -143,65 +143,90 @@ export default function TechnicalVisits() {
   };
   const setCategoryAnswers = (cat: any, val: 'C' | 'NC' | 'NA') => {
     const newAnswers = { ...form.checklistAnswers };
-    cat.items.forEach((item: any) => { newAnswers[item.id] = val; });
-    form.customItems.filter((ci: any) => ci.categoryId === cat.id).forEach((ci: any) => { newAnswers[ci.id] = val; });
+    (cat.items || []).forEach((item: any) => { newAnswers[item.id || item.code] = val; });
     setForm(prev => ({ ...prev, checklistAnswers: newAnswers }));
   };
 
-  const addCustomItem = () => {
-    if (!customItemModal || !newItemText.trim()) return;
+  const addCustomItem = async () => {
+    if (!newItemText.trim() || !customItemModal) return;
     
-    const { categoryId } = customItemModal;
-    const cat = TECHNICAL_CHECKLIST.find(c => c.id === categoryId);
-    if (!cat) return;
+    setSaving(true);
+    try {
+        const { categoryId } = customItemModal;
+        const cat = (dbChecklist.length > 0 ? dbChecklist : TECHNICAL_CHECKLIST).find(c => (c.id || c.code) === categoryId);
+        if (!cat) return;
 
-    const existing = [
-      ...cat.items,
-      ...form.customItems.filter(ci => ci.categoryId === categoryId)
-    ];
+        const items = cat.items || [];
+        const nums = items.map((i: any) => {
+            const parts = (i.id || i.code).split('.');
+            const lastPart = parts[parts.length - 1];
+            return parseInt(lastPart, 10);
+        }).filter((n: number) => !isNaN(n));
+        
+        const max = nums.length > 0 ? Math.max(...nums) : 0;
+        const baseId = (cat.id || cat.code).split('.')[0];
+        const newCode = `${baseId}.${max + 1}`;
 
-    const nums = existing.map(i => {
-        const parts = i.id.split('.');
-        const lastPart = parts[parts.length - 1];
-        return parseInt(lastPart, 10);
-    }).filter(n => !isNaN(n));
-    
-    const max = nums.length > 0 ? Math.max(...nums) : 0;
-    const baseId = categoryId.split('.')[0];
-    const newId = `${baseId}.${max + 1}`;
-    
-    setForm(prev => ({
-      ...prev,
-      customItems: [...prev.customItems, { id: newId, text: newItemText.trim(), categoryId }],
-      checklistAnswers: { ...prev.checklistAnswers, [newId]: 'C' }
-    }));
-    
-    setNewItemText('');
-    setCustomItemModal(null);
+        const apiUrl = (import.meta as any).env.VITE_API_URL || '';
+        const res = await fetch(`${apiUrl}/api/checklist/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                categoryId: cat.id || cat.code,
+                code: newCode,
+                text: newItemText.trim(),
+                order: items.length
+            })
+        });
+
+        if (res.ok) {
+            const resFetch = await fetch(`${apiUrl}/api/checklist/categories`);
+            if (resFetch.ok) {
+                const data = await resFetch.json();
+                setDbChecklist(data);
+            }
+            setNewItemText('');
+            setCustomItemModal(null);
+        } else {
+            alert('Erro ao salvar item no banco.');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Erro de conexão ao salvar item.');
+    } finally {
+        setSaving(false);
+    }
   };
 
-  const removeItem = (itemId: string) => {
-    const isCustom = form.customItems.some(ci => ci.id === itemId);
-    
-    setForm(prev => {
-        const newAnswers = { ...prev.checklistAnswers };
-        delete newAnswers[itemId];
+  const removeItem = async (itemId: string) => {
+    setSaving(true);
+    try {
+        const apiUrl = (import.meta as any).env.VITE_API_URL || '';
+        const res = await fetch(`${apiUrl}/api/checklist/items/${itemId}`, {
+            method: 'DELETE'
+        });
 
-        if (isCustom) {
-            return {
-                ...prev,
-                customItems: prev.customItems.filter(ci => ci.id !== itemId),
-                checklistAnswers: newAnswers
-            };
+        if (res.ok) {
+            const resFetch = await fetch(`${apiUrl}/api/checklist/categories`);
+            if (resFetch.ok) {
+                const data = await resFetch.json();
+                setDbChecklist(data);
+            }
+            setForm(prev => {
+                const newAnswers = { ...prev.checklistAnswers };
+                delete newAnswers[itemId];
+                return { ...prev, checklistAnswers: newAnswers };
+            });
         } else {
-            return {
-                ...prev,
-                removedItems: [...(prev.removedItems || []), itemId],
-                checklistAnswers: newAnswers
-            };
+            alert('Erro ao remover item do banco.');
         }
-    });
-    setDeleteModal(null);
+    } catch (e) {
+        console.error(e);
+        alert('Erro de conexão ao remover item.');
+    } finally {
+        setSaving(false);
+        setDeleteModal(null);
+    }
   };
 
 
@@ -552,16 +577,12 @@ export default function TechnicalVisits() {
               </div>
               <p className="text-xs text-gray-400 italic">Clique em "Preencher IA" na categoria desejada para analisar automaticamente com base nas inspeções selecionadas.</p>
               {(dbChecklist.length > 0 ? dbChecklist : TECHNICAL_CHECKLIST).map(cat => {
-                const combinedItems = [
-                  ...(cat.items || []).filter((i: any) => !(form.removedItems || []).includes(i.id || i.code)),
-                  ...form.customItems.filter(ci => ci.categoryId === (cat.id || cat.code))
-                ];
-
+                const items = cat.items || [];
                 return (
-                  <div key={cat.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                  <div key={cat.id || cat.code} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                     <div className="bg-gray-800 text-white px-4 py-3 text-sm font-bold flex flex-col md:flex-row md:items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <span className="bg-[#27AE60] text-white px-2 py-0.5 rounded text-[10px] font-black">{cat.id}</span>
+                        <span className="bg-[#27AE60] text-white px-2 py-0.5 rounded text-[10px] font-black">{cat.id || cat.code}</span>
                         <span>{cat.title}</span>
                         {dbChecklist.length > 0 && (
                           <span className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border border-blue-500/30">
@@ -580,29 +601,28 @@ export default function TechnicalVisits() {
                           ))}
                         </div>
 
-                        <button type="button" onClick={() => setCustomItemModal({ categoryId: cat.id, categoryTitle: cat.title })}
-                          className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] transition-colors font-black uppercase">
-                          <Plus className="w-3 h-3" /> Item
-                        </button>
+                        {profile?.role === 'Master' && (
+                          <button type="button" onClick={() => setCustomItemModal({ categoryId: cat.id || cat.code, categoryTitle: cat.title })}
+                            className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] transition-colors font-black uppercase">
+                            <Plus className="w-3 h-3" /> Item
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="divide-y divide-gray-100">
-                      {combinedItems.map(item => {
-                        const ans = (form.checklistAnswers as any)[item.id] || 'C';
-                        const isCustom = form.customItems.some(ci => ci.id === item.id);
+                      {items.map((item: any) => {
+                        const itemId = item.id || item.code;
+                        const ans = (form.checklistAnswers as any)[itemId] || 'C';
                         return (
-                          <div key={item.id} className={cn(
-                            "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors",
-                            isCustom && "bg-emerald-50/20"
-                          )}>
-                            <span className="text-xs font-black text-[#27AE60] w-8 flex-shrink-0">{item.id}</span>
+                          <div key={itemId} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                            <span className="text-xs font-black text-[#27AE60] w-8 flex-shrink-0">{itemId}</span>
                             <span className="text-xs text-gray-700 flex-1 font-medium">
                               {item.text}
                             </span>
                             <div className="flex gap-1 flex-shrink-0 items-center">
                               {(['C', 'NC', 'NA'] as const).map(opt => (
                                 <button key={opt} type="button"
-                                  onClick={() => setForm(prev => ({ ...prev, checklistAnswers: { ...prev.checklistAnswers, [item.id]: opt } }))}
+                                  onClick={() => setForm(prev => ({ ...prev, checklistAnswers: { ...prev.checklistAnswers, [itemId]: opt } }))}
                                   className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all border-2
                                     ${ans === opt 
                                       ? opt === 'C' ? 'bg-[#27AE60] border-[#27AE60] text-white shadow-md shadow-green-100 scale-105'
@@ -614,11 +634,13 @@ export default function TechnicalVisits() {
                                 </button>
                               ))}
                               
-                              <button type="button" onClick={() => setDeleteModal({ itemId: item.id || item.code, itemText: item.text })}
-                                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1"
-                                title="Remover item">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {profile?.role === 'Master' && (
+                                <button type="button" onClick={() => setDeleteModal({ itemId, itemText: item.text })}
+                                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1"
+                                  title="Remover permanentemente do banco">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
