@@ -218,14 +218,15 @@ export default function TechnicalVisits() {
         </div>
 
         {/* Section tabs */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex overflow-x-auto no-scrollbar border-b border-gray-200 mt-6 px-2">
           {sections.map((s, i) => (
             <button key={i} type="button" onClick={() => setActiveSection(i)}
-              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all border ${
-                activeSection === i 
-                  ? 'bg-[#27AE60] border-[#27AE60] text-white shadow-md' 
-                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+              className={`px-6 py-3 text-sm font-bold transition-all relative border-t border-x rounded-t-xl -mb-px whitespace-nowrap
+                ${activeSection === i 
+                  ? 'bg-white border-gray-200 text-[#27AE60]' 
+                  : 'bg-transparent border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}>
+              {activeSection === i && <div className="absolute top-0 left-0 right-0 h-1 bg-[#27AE60] rounded-t-xl" />}
               {i + 1}. {s}
             </button>
           ))}
@@ -290,20 +291,22 @@ export default function TechnicalVisits() {
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Foto de Entrada da Obra (Capa)</label>
-                <div className="relative border-2 border-dashed border-gray-300 rounded-2xl hover:border-[#27AE60] bg-gray-50 hover:bg-green-50/30 transition-colors group cursor-pointer overflow-hidden">
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                  <div className="p-8 flex flex-col items-center justify-center text-gray-400 group-hover:text-[#27AE60]">
-                    <ImagePlus className="w-10 h-10 mb-3" />
-                    <p className="text-sm font-bold">Clique ou arraste a imagem aqui</p>
-                    <p className="text-xs mt-1 opacity-70">PNG, JPG ou JPEG</p>
+                <div className="flex flex-col md:flex-row gap-4 items-stretch">
+                  <div className="flex-1 relative border-2 border-dashed border-gray-300 rounded-2xl hover:border-[#27AE60] bg-gray-50 hover:bg-green-50/30 transition-colors group cursor-pointer overflow-hidden min-h-[160px]">
+                    <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 group-hover:text-[#27AE60] p-4 text-center">
+                      <ImagePlus className="w-10 h-10 mb-3" />
+                      <p className="text-sm font-bold">Clique ou arraste a imagem aqui</p>
+                      <p className="text-xs mt-1 opacity-70">PNG, JPG ou JPEG</p>
+                    </div>
                   </div>
+                  {imagePreview && (
+                    <div className="w-full md:w-64 relative rounded-2xl border border-gray-200 bg-white p-2 shrink-0 flex items-center justify-center min-h-[160px]">
+                      <img src={imagePreview} className="max-h-40 max-w-full object-contain rounded-xl" alt="Preview" />
+                      <button type="button" onClick={() => { setImagePreview(null); setSelectedFile(null); }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow hover:bg-red-600 z-20"><X className="w-4 h-4" /></button>
+                    </div>
+                  )}
                 </div>
-                {imagePreview && (
-                  <div className="mt-4 relative inline-block">
-                    <img src={imagePreview} className="h-40 w-auto object-cover rounded-xl shadow-md border border-gray-200" alt="Preview" />
-                    <button type="button" onClick={() => { setImagePreview(null); setSelectedFile(null); }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow hover:bg-red-600"><X className="w-4 h-4" /></button>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -340,15 +343,14 @@ export default function TechnicalVisits() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredInspections.map(insp => (
+                    {filteredInspections.map((insp, idx) => (
                       <tr key={insp.id} className="hover:bg-green-50/50 cursor-pointer transition-colors bg-white" onClick={() => toggleInspection(insp.id)}>
                         <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={form.inspectionIds.includes(insp.id)} onChange={() => toggleInspection(insp.id)} className="h-4 w-4 rounded border-gray-300 text-[#27AE60] focus:ring-[#27AE60]" />
                         </td>
-                        <td className="py-3 px-4 text-sm font-black text-[#27AE60]">#{insp.id.substring(0,6).toUpperCase()}</td>
+                        <td className="py-3 px-4 text-sm font-black text-[#27AE60]">#{String(filteredInspections.length - idx).padStart(5, '0')}</td>
                         <td className="py-3 px-4 text-sm text-gray-700">
                           <p className="line-clamp-2">{insp.description || 'Sem descrição'}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5 font-bold uppercase">{insp.sectorName || 'Setor não informado'} {insp.locationName ? `— ${insp.locationName}` : ''}</p>
                         </td>
                         <td className="py-3 px-4 text-sm font-bold text-gray-600">{insp.type || '-'}</td>
                         <td className="py-3 px-4 text-xs font-bold text-gray-400">{new Date(insp.date).toLocaleDateString('pt-BR')}</td>

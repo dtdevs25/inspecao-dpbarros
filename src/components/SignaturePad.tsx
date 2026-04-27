@@ -11,6 +11,7 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(!!initialSignature);
+  const [currentSignature, setCurrentSignature] = useState<string | null>(initialSignature || null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // To handle orientation
@@ -38,7 +39,7 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        if (initialSignature) {
+        if (currentSignature) {
           const img = new Image();
           img.crossOrigin = 'anonymous';
           img.onload = () => {
@@ -48,11 +49,11 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
             const y = (canvas.height / 2) - (img.height / 2) * scale;
             ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
           };
-          img.src = initialSignature;
+          img.src = currentSignature;
         }
       }
     }
-  }, [isModalOpen, initialSignature]);
+  }, [isModalOpen, currentSignature]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault();
@@ -110,7 +111,9 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
   const saveSignature = () => {
     const canvas = canvasRef.current;
     if (canvas && hasSignature) {
-      onSignatureChange(canvas.toDataURL('image/png'));
+      const dataUrl = canvas.toDataURL('image/png');
+      setCurrentSignature(dataUrl);
+      onSignatureChange(dataUrl);
     }
     setIsModalOpen(false);
   };
@@ -119,6 +122,7 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
     const canvas = canvasRef.current;
     if (!canvas) {
       setHasSignature(false);
+      setCurrentSignature(null);
       onSignatureChange(null);
       return;
     }
@@ -127,6 +131,7 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     setHasSignature(false);
+    setCurrentSignature(null);
   };
 
   return (
@@ -136,7 +141,7 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
         {hasSignature && !isModalOpen && (
           <button
             type="button"
-            onClick={() => { setHasSignature(false); onSignatureChange(null); }}
+            onClick={() => { setHasSignature(false); setCurrentSignature(null); onSignatureChange(null); }}
             className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
           >
             <Eraser className="w-3 h-3" />
@@ -150,8 +155,8 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
           onClick={() => setIsModalOpen(true)}
           className="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 hover:bg-green-50 hover:border-[#27AE60] transition-colors cursor-pointer relative overflow-hidden"
         >
-          {hasSignature && initialSignature ? (
-             <img src={initialSignature} alt="Signature" className="w-full max-h-32 object-contain bg-white" />
+          {hasSignature && currentSignature ? (
+             <img src={currentSignature} alt="Signature" className="w-full h-32 object-contain bg-white" />
           ) : (
             <div className="p-8 flex flex-col items-center justify-center text-gray-400">
               <PenTool className="w-8 h-8 mb-2" />
@@ -162,10 +167,10 @@ export function SignaturePad({ label, onSignatureChange, initialSignature }: Sig
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8">
           {/* Portrait Warning Overlay for Mobile */}
           {isPortrait && window.innerWidth < 768 && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black text-white p-6 text-center">
+            <div className="absolute inset-0 z-[10000] flex flex-col items-center justify-center bg-black text-white p-6 text-center">
               <RotateCcw className="w-16 h-16 animate-bounce text-[#27AE60] mb-4" />
               <h2 className="text-2xl font-black mb-2">Vire o Celular</h2>
               <p className="text-gray-300">Por favor, vire o seu aparelho na horizontal para ter mais espaço para assinar.</p>
