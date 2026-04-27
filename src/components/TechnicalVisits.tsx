@@ -44,7 +44,9 @@ export default function TechnicalVisits() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [engInput, setEngInput] = useState('');
+  const [engEmailInput, setEngEmailInput] = useState('');
   const [techInput, setTechInput] = useState('');
+  const [techEmailInput, setTechEmailInput] = useState('');
 
   const emptyForm = () => ({
     companyId: '', unitId: '', date: new Date().toISOString().split('T')[0],
@@ -54,7 +56,9 @@ export default function TechnicalVisits() {
     inspectionIds: [] as string[],
     checklistAnswers: { ...DEFAULT_CHECKLIST_ANSWERS } as ChecklistAnswers,
     engineerResponsible: [] as string[],
+    engineerEmails: [] as string[],
     technicianResponsible: [] as string[],
+    technicianEmails: [] as string[],
     technicianSignature: null as string | null,
     engineerSignature: null as string | null,
   });
@@ -130,7 +134,9 @@ export default function TechnicalVisits() {
         registeredByUid: user?.uid || '',
         updatedAt: serverTimestamp(),
         engineerResponsible: Array.isArray(form.engineerResponsible) ? form.engineerResponsible.join(', ') : form.engineerResponsible,
+        engineerEmails: Array.isArray(form.engineerEmails) ? form.engineerEmails.join(', ') : form.engineerEmails,
         technicianResponsible: Array.isArray(form.technicianResponsible) ? form.technicianResponsible.join(', ') : form.technicianResponsible,
+        technicianEmails: Array.isArray(form.technicianEmails) ? form.technicianEmails.join(', ') : form.technicianEmails,
       };
       if (selectedFile) data.photoUrl = await uploadFile(selectedFile, 'foto-visita-dpbarros');
       else if (imagePreview) data.photoUrl = (form as any).photoUrl || imagePreview;
@@ -175,18 +181,23 @@ export default function TechnicalVisits() {
     setForm({ 
         ...emptyForm(), 
         ...v,
-        engineerResponsible: v.engineerResponsible ? v.engineerResponsible.split(',').map((s:string) => s.trim()).filter(Boolean) : [],
-        technicianResponsible: v.technicianResponsible ? v.technicianResponsible.split(',').map((s:string) => s.trim()).filter(Boolean) : [],
+        engineerResponsible: v.engineerResponsible ? String(v.engineerResponsible).split(',').map(s => s.trim()).filter(Boolean) : [],
+        engineerEmails: v.engineerEmails ? String(v.engineerEmails).split(',').map(s => s.trim()).filter(Boolean) : [],
+        technicianResponsible: v.technicianResponsible ? String(v.technicianResponsible).split(',').map(s => s.trim()).filter(Boolean) : [],
+        technicianEmails: v.technicianEmails ? String(v.technicianEmails).split(',').map(s => s.trim()).filter(Boolean) : [],
     }); 
     
     let parsedPhotoUrl = v.photoUrl || null;
-    if (parsedPhotoUrl && parsedPhotoUrl.startsWith('/api/files/')) {
-        const parts = parsedPhotoUrl.split('/');
-        // parts = ['', 'api', 'files', 'foto-visita-dpbarros', '1777229230523_obraentrada.jpg']
-        const bucket = parts[3];
-        const filename = parts[4];
-        if (bucket && filename) {
-            parsedPhotoUrl = `https://storage.ehspro.com.br/api/v1/buckets/${bucket}/objects/download?preview=true&prefix=${filename}&version_id=null`;
+    if (parsedPhotoUrl) {
+        if (parsedPhotoUrl.startsWith('/api/files/')) {
+            const parts = parsedPhotoUrl.split('/');
+            const bucket = parts[3];
+            const filename = parts[4];
+            if (bucket && filename) {
+                parsedPhotoUrl = `https://storage.ehspro.com.br/api/v1/buckets/${bucket}/objects/download?preview=true&prefix=${filename}&version_id=null`;
+            }
+        } else if (!parsedPhotoUrl.startsWith('http') && !parsedPhotoUrl.startsWith('data:')) {
+            parsedPhotoUrl = `https://storage.ehspro.com.br/api/v1/buckets/foto-visita-dpbarros/objects/download?preview=true&prefix=${parsedPhotoUrl}&version_id=null`;
         }
     }
     setImagePreview(parsedPhotoUrl); 
@@ -205,14 +216,23 @@ export default function TechnicalVisits() {
     const a = document.createElement('a'); a.href = url; a.download = `relatorio_${id.substring(0,6)}.pdf`; a.click();
   };
 
-  const addTag = (field: 'engineerResponsible' | 'technicianResponsible', value: string) => {
-    if (!value.trim()) return;
-    setForm(prev => ({ ...prev, [field]: [...(prev[field] as string[]), value.trim()] }));
-    if (field === 'engineerResponsible') setEngInput(''); else setTechInput('');
+  const addTag = (field: 'engineerResponsible' | 'technicianResponsible', emailField: 'engineerEmails' | 'technicianEmails', nameValue: string, emailValue: string) => {
+    if (!nameValue.trim()) return;
+    setForm(prev => ({ 
+        ...prev, 
+        [field]: [...(prev[field] as string[]), nameValue.trim()],
+        [emailField]: [...((prev[emailField] as string[]) || []), emailValue.trim()]
+    }));
+    if (field === 'engineerResponsible') { setEngInput(''); setEngEmailInput(''); }
+    else { setTechInput(''); setTechEmailInput(''); }
   };
 
-  const removeTag = (field: 'engineerResponsible' | 'technicianResponsible', index: number) => {
-    setForm(prev => ({ ...prev, [field]: (prev[field] as string[]).filter((_, i) => i !== index) }));
+  const removeTag = (field: 'engineerResponsible' | 'technicianResponsible', emailField: 'engineerEmails' | 'technicianEmails', index: number) => {
+    setForm(prev => ({ 
+        ...prev, 
+        [field]: (prev[field] as string[]).filter((_, i) => i !== index),
+        [emailField]: ((prev[emailField] as string[]) || []).filter((_, i) => i !== index)
+    }));
   };
 
   const sections = ['Geral', 'Docs. SESMT', 'Inspeções', 'Check List', 'Anotações'];
@@ -271,16 +291,19 @@ export default function TechnicalVisits() {
                   <div className="flex flex-wrap gap-2 mb-2">
                     {(form.engineerResponsible as string[]).map((eng, idx) => (
                       <span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border border-blue-100">
-                        <Tag className="w-3 h-3" /> {eng}
-                        <button type="button" onClick={() => removeTag('engineerResponsible', idx)} className="hover:text-red-500 ml-1"><X className="w-3 h-3" /></button>
+                        <Tag className="w-3 h-3" /> {eng} {form.engineerEmails?.[idx] ? `(${form.engineerEmails[idx]})` : ''}
+                        <button type="button" onClick={() => removeTag('engineerResponsible', 'engineerEmails', idx)} className="hover:text-red-500 ml-1"><X className="w-3 h-3" /></button>
                       </span>
                     ))}
                   </div>
-                  <div className="flex gap-2">
-                    <input type="text" className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#27AE60] outline-none text-sm"
-                      placeholder="Adicionar Engenheiro..." value={engInput} onChange={e => setEngInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('engineerResponsible', engInput); } }} />
-                    <button type="button" onClick={() => addTag('engineerResponsible', engInput)} className="bg-gray-100 hover:bg-gray-200 px-4 rounded-xl font-bold text-sm text-gray-600 transition-colors">Add</button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input type="text" className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#27AE60] outline-none text-sm min-w-0"
+                      placeholder="Nome do Engenheiro..." value={engInput} onChange={e => setEngInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('engineerResponsible', 'engineerEmails', engInput, engEmailInput); } }} />
+                    <input type="email" className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#27AE60] outline-none text-sm min-w-0"
+                      placeholder="E-mail (opcional)..." value={engEmailInput} onChange={e => setEngEmailInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('engineerResponsible', 'engineerEmails', engInput, engEmailInput); } }} />
+                    <button type="button" onClick={() => addTag('engineerResponsible', 'engineerEmails', engInput, engEmailInput)} className="bg-gray-100 hover:bg-gray-200 px-4 py-2 sm:py-0 rounded-xl font-bold text-sm text-gray-600 transition-colors">Add</button>
                   </div>
                 </div>
                 <div>
@@ -288,16 +311,19 @@ export default function TechnicalVisits() {
                   <div className="flex flex-wrap gap-2 mb-2">
                     {(form.technicianResponsible as string[]).map((tech, idx) => (
                       <span key={idx} className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border border-purple-100">
-                        <Tag className="w-3 h-3" /> {tech}
-                        <button type="button" onClick={() => removeTag('technicianResponsible', idx)} className="hover:text-red-500 ml-1"><X className="w-3 h-3" /></button>
+                        <Tag className="w-3 h-3" /> {tech} {form.technicianEmails?.[idx] ? `(${form.technicianEmails[idx]})` : ''}
+                        <button type="button" onClick={() => removeTag('technicianResponsible', 'technicianEmails', idx)} className="hover:text-red-500 ml-1"><X className="w-3 h-3" /></button>
                       </span>
                     ))}
                   </div>
-                  <div className="flex gap-2">
-                    <input type="text" className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#27AE60] outline-none text-sm"
-                      placeholder="Adicionar Técnico..." value={techInput} onChange={e => setTechInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('technicianResponsible', techInput); } }} />
-                    <button type="button" onClick={() => addTag('technicianResponsible', techInput)} className="bg-gray-100 hover:bg-gray-200 px-4 rounded-xl font-bold text-sm text-gray-600 transition-colors">Add</button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input type="text" className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#27AE60] outline-none text-sm min-w-0"
+                      placeholder="Nome do Técnico..." value={techInput} onChange={e => setTechInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('technicianResponsible', 'technicianEmails', techInput, techEmailInput); } }} />
+                    <input type="email" className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#27AE60] outline-none text-sm min-w-0"
+                      placeholder="E-mail (opcional)..." value={techEmailInput} onChange={e => setTechEmailInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag('technicianResponsible', 'technicianEmails', techInput, techEmailInput); } }} />
+                    <button type="button" onClick={() => addTag('technicianResponsible', 'technicianEmails', techInput, techEmailInput)} className="bg-gray-100 hover:bg-gray-200 px-4 py-2 sm:py-0 rounded-xl font-bold text-sm text-gray-600 transition-colors">Add</button>
                   </div>
                 </div>
               </div>
