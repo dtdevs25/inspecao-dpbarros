@@ -87,9 +87,12 @@ export default function TechnicalVisits() {
             const res = await fetch(`${apiUrl}/api/checklist/categories`);
             if (res.ok) {
                 const data = await res.json();
-                if (data && data.length > 0) setDbChecklist(data);
+                if (data && data.length > 0) {
+                    console.log('✅ Checklist carregado com sucesso do Banco de Dados:', data.length, 'categorias.');
+                    setDbChecklist(data);
+                }
             }
-        } catch (e) { console.error('Erro ao buscar checklist do banco', e); }
+        } catch (e) { console.error('❌ Erro ao buscar checklist do banco:', e); }
     };
     fetchChecklist();
 
@@ -560,6 +563,11 @@ export default function TechnicalVisits() {
                       <div className="flex items-center gap-2">
                         <span className="bg-[#27AE60] text-white px-2 py-0.5 rounded text-[10px] font-black">{cat.id}</span>
                         <span>{cat.title}</span>
+                        {dbChecklist.length > 0 && (
+                          <span className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border border-blue-500/30">
+                            Banco de Dados
+                          </span>
+                        )}
                       </div>
                       
                       <div className="flex flex-wrap items-center gap-2">
