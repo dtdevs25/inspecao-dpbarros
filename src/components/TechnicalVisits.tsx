@@ -602,7 +602,8 @@ export default function TechnicalVisits() {
                 </button>
               )}
             </div>
-                    <button type="submit" disabled={saving}
+            {activeSection === sections.length - 1 && (
+              <button type="submit" disabled={saving}
                 className="bg-[#27AE60] hover:bg-[#219150] text-white px-8 py-3 rounded-xl font-bold disabled:opacity-60 flex items-center gap-2 shadow-lg shadow-green-100 transition-all active:scale-95">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {saving ? 'Salvando...' : 'Salvar Visita Técnica'}
