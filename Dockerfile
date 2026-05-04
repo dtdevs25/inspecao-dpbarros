@@ -11,6 +11,7 @@ RUN npm ci
 COPY . .
 # Gerar prisma client aqui também pode ser feito para ter os tipos se o frontend usar
 RUN npx prisma generate
+ENV NODE_OPTIONS="--max-old-space-size=512"
 RUN npm run build
 
 # ==========================================
